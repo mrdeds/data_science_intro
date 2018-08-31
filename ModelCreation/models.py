@@ -1,3 +1,9 @@
+#-*- coding: utf-8 -*-
+"""
+Creación de modelos de ML simples y modelos utilizando TPOT, reconocimiento del
+tipo de problema e implementación de modelos de regresión.
+"""
+
 import statsmodels.api as sm
 import numpy as np
 from tpot import TPOTClassifier, TPOTRegressor
@@ -51,7 +57,6 @@ def logreg(X_train, y_train):
         y_train (Array): conjunto de datos de entrenamiento (objetivo)
     returns:
         logreg (modelo): Regresión Logística
-
     """
     try:
         # Si la matriz es singular va a dar error
@@ -73,7 +78,6 @@ def linreg(X_train, y_train):
         y_train (Array): conjunto de datos de entrenamiento (objetivo)
     returns:
         linreg_model (modelo): Regresión Lineal
-
     """
     linreg = sm.OLS(y_train, X_train)
     linreg_model = linreg.fit()
@@ -92,7 +96,6 @@ def simple_model(X_train, y_train, tpot=False):
         model (modelo): Regresión Logística o Lineal dependiendo de la variable
                          objetivo
         tpotmod (modelo): Modelo de Regresión o Clasificación generado con TPOT
-
     """
     tpotm = None
     # Revisamos si es modelo de clasificación binaria
