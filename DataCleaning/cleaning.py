@@ -27,7 +27,7 @@ def clean_numeric(df, numericas, mp=0.4):
             num_dropped.append(i)
         else:
             # si faltan por lo menos el x% de los datos (default 40%)
-            if len(DF[(DF[i].isna()) | (DF[i] == '')]) > mp * len(DF):
+            if len(DF[DF[i].isna()]) > mp * len(DF):
                 num_dropped.append(i)
             else:
                 num.append(i) # dejamos las demás
@@ -47,7 +47,7 @@ def clean_categoric(df, categoricas, mp=0.4):
     DF = df.copy()
     cat = []
     cat_dropped = []
-    # hacemos lo mismo con las variables categóricas
+    # limpiamos variables categóricas y elegimos las que tienen datos completos
     for i in categoricas:
         # convertimios a string para no tener problema con los datos
         DF[i] = DF[i].astype(str)
@@ -62,11 +62,11 @@ def clean_categoric(df, categoricas, mp=0.4):
             else:
                 cat.append(i)
 
-    return cat_droped
+    return cat_dropped
 
 def clean_dates(df, fechas, mp=0.4):
     """
-    Limpieza de datos temporales
+    Limpieza de datos temporales (fechas)
     Args:
         DF (DataFrame): DataFrame con todos los datos
         fechas (list): Variables temporales
@@ -76,7 +76,7 @@ def clean_dates(df, fechas, mp=0.4):
     """
     DF = df.copy()
     fechas_dropped = []
-    # hacemos lo mismo con fechas
+    # Limpiamos fechas y elegimos las que tienen datos completos
     for i in fechas:
         if len(DF[DF[i].isna()]) >= mp * len(DF):
             fechas_dropped.append(i)
@@ -97,7 +97,7 @@ def datatypes(df):
     numericas = list(df.select_dtypes(include=['int','float']).columns)
     # variables categoricas
     categoricas = list(df.select_dtypes(include=['category', 'object']).columns)
-    # fechas
+    # variables temporales
     fechas = list(df.select_dtypes(include=['datetime']).columns)
 
     return numericas, categoricas, fechas
@@ -124,8 +124,8 @@ def clean_data(df, response=None, mp=0.4, safezone=None, printdrops=False):
         categoricas = [i for i in categoricas if i not in safezone]
         fechas = [i for i in fechas if i not in safezone]
     num_dropped = clean_numeric(DF, numericas, mp=mp)
-    cat_dropped = clean_categoric(DF, numericas, mp=mp)
-    fech_dropped = clean_dates(DF, numericas, mp=mp)
+    cat_dropped = clean_categoric(DF, categoricas, mp=mp)
+    fech_dropped = clean_dates(DF, fechas, mp=mp)
     DF = DF.drop(num_dropped,1) # drop de numericas que no sirven
     DF = DF.drop(cat_dropped,1) # drop de categoricas que no sirven
     DF = DF.drop(fech_dropped,1) # drop de fechas que no sirven
