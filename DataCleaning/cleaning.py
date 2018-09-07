@@ -118,7 +118,7 @@ def clean_data(df, response=None, mp=0.4, safezone=None, printdrops=False):
     DF0 = df.copy()
     if response != None:
         DF0 = DF0.drop(response,1)
-    numericas, categoricas, fechas = datatypes(df)
+    numericas, categoricas, fechas = datatypes(DF0)
     if safezone != None:
         numericas = [i for i in numericas if i not in safezone]
         categoricas = [i for i in categoricas if i not in safezone]
