@@ -15,54 +15,56 @@ def clean_numeric(df, numericas, mp=0.4):
         numericas (list): Variables numéricas
         mp (float): Máximo porcentaje permitido de datos faltantes
     Returns:
-        num_dropped (list): Lista de variables numéricas a eliminar
+        numericas_dropped (list): Lista de variables numéricas a eliminar
     """
     # limpiamos variables numéricas y elegimos las que tienen datos completos
     DF = df.copy()
     num = []
-    num_dropped = []
+    numericas_dropped = []
     for i in numericas:
         # si son constantes
         if len(DF[i].unique()) == 1:
-            num_dropped.append(i)
+            numericas_dropped.append(i)
         else:
             # si faltan por lo menos el x% de los datos (default 40%)
             if len(DF[DF[i].isna()]) > mp * len(DF):
-                num_dropped.append(i)
+                numericas_dropped.append(i)
             else:
                 num.append(i) # dejamos las demás
 
-    return num_dropped
+    return numericas_dropped
 
-def clean_categoric(df, categoricas, mp=0.4):
+def clean_categoric(df, categoricas, mp=0.4, max_unique=1000):
     """
     Limpieza de datos categóricos
     Args:
         DF (DataFrame): DataFrame con todos los datos
         categoricas (str): Variable dependiente
         mp (float): Máximo porcentaje permitido de datos faltantes
+        max_unique (int): Máximo número de valores únicos en una variable
+                          categórica
     Returns:
-        cat_dropped (list): Lista de variables categóricas a eliminar
+        categoricas_dropped (list): Lista de variables categóricas a eliminar
     """
     DF = df.copy()
     cat = []
-    cat_dropped = []
+    categoricas_dropped = []
     # limpiamos variables categóricas y elegimos las que tienen datos completos
     for i in categoricas:
         # convertimios a string para no tener problema con los datos
         DF[i] = DF[i].astype(str)
         # Más de 1000 categorías (ids) o constante
-        if len(DF[i].unique()) > 1000 or len(DF[i].unique()) == 1:
-            cat_dropped.append(i)
+        if len(DF[i].unique()) > max_unique or len(DF[i].unique()) == 1:
+            categoricas_dropped.append(i)
         else:
             # si faltan por lo menos el x% de los datos (default 40%)
             if len(DF[(DF[i].isna()) | (DF[i] == 'nan')
                                      | (DF[i] == '')]) > mp * len(DF):
-                cat_dropped.append(i)
+                categoricas_dropped.append(i)
             else:
                 cat.append(i)
 
-    return cat_dropped
+    return categoricas_dropped
 
 def clean_dates(df, fechas, mp=0.4):
     """
@@ -102,7 +104,8 @@ def datatypes(df):
 
     return numericas, categoricas, fechas
 
-def clean_data(df, response=None, mp=0.4, safezone=None, printdrops=False):
+def clean_data(df, max_unique=1000, response=None, mp=0.4, safezone=None,
+               printdrops=False):
     """
     Limpia datos dependiendo de cada tipo
     Args:
@@ -123,18 +126,19 @@ def clean_data(df, response=None, mp=0.4, safezone=None, printdrops=False):
         numericas = [i for i in numericas if i not in safezone]
         categoricas = [i for i in categoricas if i not in safezone]
         fechas = [i for i in fechas if i not in safezone]
-    num_dropped = clean_numeric(DF, numericas, mp=mp)
-    cat_dropped = clean_categoric(DF, categoricas, mp=mp)
-    fech_dropped = clean_dates(DF, fechas, mp=mp)
-    DF = DF.drop(num_dropped,1) # drop de numericas que no sirven
-    DF = DF.drop(cat_dropped,1) # drop de categoricas que no sirven
-    DF = DF.drop(fech_dropped,1) # drop de fechas que no sirven
+    numericas_dropped = clean_numeric(DF, numericas, mp=mp)
+    categoricas_dropped = clean_categoric(DF, categoricas, mp=mp,
+                                          max_unique=max_unique)
+    fechas_dropped = clean_dates(DF, fechas, mp=mp)
+    DF = DF.drop(numericas_dropped,1) # drop de numericas que no sirven
+    DF = DF.drop(categoricas_dropped,1) # drop de categoricas que no sirven
+    DF = DF.drop(fechas_dropped,1) # drop de fechas que no sirven
     if printdrops != False:
         print('Numéricas que eliminamos:')
-        display(num_dropped)
+        display(numericas_dropped)
         print('Categóricas que eliminamos:')
-        display(cat_dropped)
+        display(categoricas_dropped)
         print('Fechas que eliminamos:')
-        display(fech_dropped)
+        display(fechas_dropped)
 
     return DF
