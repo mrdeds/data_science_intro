@@ -9,13 +9,13 @@ import pandas as pd
 
 def db_connection(conn_creds):
     """
-    Método que hace la conexión a la base
+    Método que hace la conexión a la base de datos
 
     Args:
         conn_creds(dict): diccionario donde vienen las credenciales de
         la conexión a la base de datos
                          host(str): host que hospeda a la base de datos
-                         port(str): puerto donde está disponible la BD
+                         port(str): puerto donde está disponible la base de datos
                          user(str): usuario con el que se hará la conexión
                          password(str): contraseña del usuario en la BD
                          database(str): nombre de la base de datos
@@ -38,11 +38,11 @@ def db_connection(conn_creds):
 
 def download_data(conn, query):
     """
-    Baja datos elegidos y convierte categóricos en binarios
+    Descarga datos de la base de datos según la consulta insertada
 
     Args:
         conn (connection): objeto que contiene la sesión de una
-                           conexión a la BD
+                           conexión a la base de datos
         query (str): String donde se define el query a ejecutarse
     Returns:
         df (DataFrame): Tabla con los datos que elegimos
