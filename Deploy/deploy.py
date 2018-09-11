@@ -40,7 +40,8 @@ class DeployMLEngine(object):
 
     def to_savedmodel(self):
         """
-        Función que transforma el modelo de .h5 (Keras) a .pb(Tensorflow)
+        Función que transforma el modelo de .h5 (Keras) a .pb(Tensorflow) y lo
+        guarda en Storage
         """
         model = load_model(self.fname)
 
@@ -75,7 +76,6 @@ class DeployMLEngine(object):
         new_model = os.system(command)
 
         if new_model > 0: #Si nos regresa un error el comando ejecutado
-            print("WARNING: Un modelo con ese nombre ya existe, se intentará añadir una nueva versión")
             logger.warning('Un modelo con el nombre %s ya existe, se intentará\
             añadir una nueva versión', self.model_name)
 
@@ -102,13 +102,11 @@ class DeployMLEngine(object):
             endpoint = """https://ml.googleapis.com/v1/projects/{}/models/{}/versions/{}:predict
                 """.format(self.project_id, self.model_name, self.version_name)
             mess = request.text + "\n" + endpoint
-            print("Endpoint creado: {}".format(mess))
             logger.info("INFO: Endpoint creado: %s", mess)
 
         except requests.exceptions.RequestException as exception:
-            print("Hubo un problema creando la nueva versión: {}".format(request.text))
-            print(exception)
             logger.error("Error: %s", request.text)
+            logger.error("Exception: %s", exception)
 
         return request
 
