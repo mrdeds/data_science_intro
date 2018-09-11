@@ -5,6 +5,9 @@ Clase que hace deploy a ML Engine.
 """
 import math
 from datetime import datetime as dt
+import logging
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 def divide_cats(DF, categorias):
     """

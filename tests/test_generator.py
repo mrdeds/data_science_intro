@@ -5,7 +5,6 @@ Funciones que toma pytest para evaluar la librería
 """
 import logging
 import pytest
-predic_lib
 from transform import divide_cats, nan_to_avg
 import pandas as pd
 import random
