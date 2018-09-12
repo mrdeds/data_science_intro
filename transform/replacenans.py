@@ -3,10 +3,10 @@
 Función que reemplaza datos faltantes con modelos simples
 """
 
+import logging
 import pandas as pd
 import numpy as np
-from ModelCreation.models import *
-from DataCleaning.cleaning import *
+from ModelCreation.models import linreg, logreg
 
 def nan_to_mean(df):
     """
@@ -27,19 +27,19 @@ def nan_to_mean(df):
             pass
     return data
 
-def replace_nan(Data, numeric):
+def replace_nan(data, numeric):
     """
     Rellena datos faltantes con modelos simples, utilizando mismas variables
     para todos los datos
 
     Args:
-        Data (DataFrame): Datos
+        data (DataFrame): Datos
         numeric (list): Lista de datos numéricos
     Returns:
         df (DataFrame): Datos con NaNs reemplazados
     """
-    df = Data[numeric].copy()
-    df_rep = Data[numeric].copy()
+    df = data[numeric].copy()
+    df_rep = data[numeric].copy()
     # Primero cambiamos NaNs por promedio
     df_rep = nan_to_mean(df_rep)
     replaced = df.copy()
@@ -69,8 +69,8 @@ def replace_nan(Data, numeric):
                 replaced[i+'_rep'] = 0
                 replaced.loc[replaced[i].isna(), i + '_rep'] = 1
             except Exception as e:
-                print(i)
-                print(e)
+                logging.info(i)
+                logging.error(e)
     rep_columns = [i for i in replaced.columns if i.endswith('_rep')]
     for i in rep_columns:
         df[i] = replaced[i]
