@@ -42,11 +42,14 @@ class DeployMLEngine(object):
         """
         Función que transforma el modelo de .h5 (Keras) a .pb(Tensorflow) y lo
         guarda en Storage
+
+        Returns:
+            - res(string): ruta donde se guarda modelo transformado
         """
         model = load_model(self.fname)
-
+        path = self.model_dest+"/"+self.version_name
         try:
-            builder = SavedModelBuilder(self.model_dest+"/"+self.version_name)
+            builder = SavedModelBuilder(path)
             signature = predict_signature_def(
                 inputs={"inputs": model.input},
                 outputs={"outputs": model.output})
@@ -57,7 +60,7 @@ class DeployMLEngine(object):
                     signature_def_map={
                         'predict': signature})
                 builder.save()
-            res = "Modelo guardado en formato .pb"
+            res = "Modelo guardado en formato .pb en {}".format(path)
             logger.info(res)
         except AssertionError as exception:
             res = exception
@@ -68,6 +71,9 @@ class DeployMLEngine(object):
     def create_model(self):
         """
         Función que crea una nueva instancia de modelo en el proyecto
+
+        Returns:
+            - new_model(string): La confirmación de que se instanció un nuevo modelo
         """
         command = """ gcloud ml-engine models create {} \
             --enable-logging \
@@ -84,6 +90,10 @@ class DeployMLEngine(object):
     def create_version(self):
         """
         Función que crea una nueva versión del modelo entrenado
+
+        Returns:
+            - new_model(string): La descripción de la nueva versión del modelo desplegado en
+                                 ML Engine, junto con el endpoint creado
         """
         #obtenemos el token que nos identifica en GCP
         batcmd = "gcloud auth print-access-token"
@@ -105,14 +115,19 @@ class DeployMLEngine(object):
             logger.info("INFO: Endpoint creado: %s", mess)
 
         except requests.exceptions.RequestException as exception:
-            logger.error("Error: %s", request.text)
+            mess = "Error: %s", request.text
+            logger.error(mess)
             logger.error("Exception: %s", exception)
 
-        return request
+        return mess
 
     def deploy(self):
         """
         Función que despliega el modelo guardado en .h5 a endpoint en ML Engine
+
+        Returns:
+            - res(string): La descripción de la nueva versión del modelo desplegado en
+                                 ML Engine, junto con el endpoint creado
         """
         logger.info("Convirtiendo modelo y guardando en Storage...")
         self.to_savedmodel()
