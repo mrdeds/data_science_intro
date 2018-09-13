@@ -6,6 +6,8 @@ Función que reemplaza datos faltantes con modelos simples
 import logging
 import pandas as pd
 import numpy as np
+import sys
+sys.path.append('../')
 from ModelCreation.models import linreg, logreg
 
 def nan_to_mean(df):
