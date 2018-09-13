@@ -50,21 +50,9 @@ def replace_nan(data, numeric):
                 y = df_rep[i].values
                 # Instancias que necesitan reemplazo
                 X_rep = df_rep[df[i].isna()].drop(i, axis=1).values
-                # Vemos si se trata de una variable binaria
-                if len(set(np.unique(y))) == 2:
-                    # Usamos Logit para rellenar nulos
-                    logit = logreg(X, y)
-                    # Valor binario
-                    logarray = logit.predict(X_rep)
-                    logarray[logarray >= 0.5] = 1
-                    logarray[logarray < 0.5] = 0
-                    df.loc[df[i].isna(), i] = logarray
-
-                # Si se trata de una variable continua
-                else:
-                    lr = linreg(X, y)
-                    df.loc[df[i].isna(), i] = lr.predict(X_rep)
-
+                # Modelo simple (regresión lineal) para cada variable
+                lr = linreg(X, y)
+                df.loc[df[i].isna(), i] = lr.predict(X_rep)
                 # Marcamos variables con instancias reemplazadas
                 replaced[i+'_rep'] = 0
                 replaced.loc[replaced[i].isna(), i + '_rep'] = 1
