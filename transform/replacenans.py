@@ -41,7 +41,8 @@ def replace_nan(data, numeric):
         df (DataFrame): Datos con NaNs reemplazados
     """
     df = data[numeric].copy()
-    df_rep = data[numeric].copy()
+    df['intercept'] = 1
+    df_rep = df.copy()
     # Primero cambiamos NaNs por promedio
     df_rep = nan_to_mean(df_rep)
     replaced = df.copy()
