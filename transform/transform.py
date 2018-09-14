@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # coding: utf-8
 """
-Clase que hace deploy a ML Engine.
+Funciones que transforman y enriquecen los datos para entrenamiento
 """
 import math
 from datetime import datetime as dt
@@ -32,8 +32,6 @@ def divide_cats(DF, categorias):
     return DF, new_vars
 
 
-
-
 def nan_to_avg(DF):
     """
     Todos los valores faltantes los cambia por el promedio de la columna
@@ -54,13 +52,19 @@ def nan_to_avg(DF):
             print(e)
     return DF
 
+
 def check_correl(DF, var_list, response, treshold=0.1):
     """
     De una lista de variables quita las que tengan menor correlación del DataFrame
 
     Args:
-        - DF (Dataframe): Dataframe con los datos aumentados
-        - var_list (list): lista de variables a verificar correlación
+        DF (Dataframe): Dataframe con los datos aumentados
+        var_list (list): lista de variables a verificar correlación
+        response (string): nombre de la variable dependiente a predecir
+    Response:
+        DF (Datframe): Dataframe con variables que tienen mayor relación con
+                        la variable a predecir
+        dropped (list): lista de variables desechadas de la lista por baja correlación
     """
     df = DF.copy()
     dropped = []
@@ -74,13 +78,16 @@ def check_correl(DF, var_list, response, treshold=0.1):
     return df, dropped
 
 
-def augment_numeric(DF):
+def augment_numeric(DF, response):
     """
     Crea una lista con transformación de variables numéricas del DataFrame
 
     Args:
         DF (Dataframe): Dataframe con los datos numéricos a aumentar
-        new_vars (list): lista con nombre de variables añadidas
+        response (list): nombre de las variables a predecir
+    Response:
+        DF (DataFrame): Dataframe con los datos numéricos aumentados
+        new_vars (list): lista con nombre de variables aumentadas candidatas
     """
     df = DF.copy()
 
@@ -88,7 +95,7 @@ def augment_numeric(DF):
 
     df = nan_to_avg(df) #cambiar a función que predice valores
 
-    numericas = [x for x in numericas if x != response]
+    numericas = list(filter(lambda x: x not in response, numericas))
     new_vars = []
 
     for i in numericas:
@@ -125,17 +132,22 @@ def augment_numeric(DF):
 
     return df, new_vars
 
-def augment_date(DF):
+
+def augment_date(DF, response):
     """
     Crea una lista con transformación de variables de fechas del DataFrame
 
     Args:
+        DF (Datframe): Datframe con los datos de fecha a aumentar
+        response (list): nombre de las variables dependiente a predecir
+    Response:
         DF (Dataframe): Dataframe con los datos de fechas aumentados
+        new_vars(list): lista con las variables aumentadas candidatas
     """
     fechas = list(df.select_dtypes(include=['datetime']).columns)
 
     df = nan_to_avg(df)
-    fechas = [x for x in fechas if x != response]
+    fechas = list(filter(lambda x: x not in response, fechas))
 
     newvars = []
     unuseful = []
@@ -180,17 +192,25 @@ def augment_date(DF):
     return df, new_vars
 
 
-def augment_categories(DF):
+def augment_categories(DF, response):
     """
     Se hacen transformaciones con operaciones lógicas entre variables categóricas
     dentro de un Dataframe
+
+    Args:
+        DF (DataFrame): Dataframe de donde se quieren aumentar las categorías
+        response(list): lista con nombres de las variables dependientes a predecir
+
+    Response:
+        df (Dataframe): DataFrame con las variables categóricas aumentadas
+        new_vars(list): lista con las variables categóricas candidatas aumentadas
     """
     dummy_vars = []
     for i in df.columns:
         if set(df[i].unique()) == set([0, 1]):
             dummy_vars.append(i)
 
-    if response in dummy_vars: dummy_vars.remove(response)
+    dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
     for i in dummy_vars:
         new_vars.append(i)
@@ -227,6 +247,7 @@ def augment_categories(DF):
 
     return df, new_vars
 
+
 def augment_data(DF, response, treshold=0.1):
     """
     Prueba ciertas transformaciones numéricas y verifica si la correlación es buena
@@ -235,21 +256,17 @@ def augment_data(DF, response, treshold=0.1):
     Args:
         DF (DataFrame): DataFrame de tus datos
         response (str): Variable dependiente (la debe contener tu base)
-        correl (float): Correlación mínima que se espera de una variable que
+        treshold (float): Correlación mínima que se espera de una variable que
                         quieres que entre al modelo
-        convertdummies (boolean): Si queremos convertir categóricas a variables
-                                  binarias
-        dummy_transform (boolean): Si queremos encontrar transformaciones en las
-                                   variables binarias
     Returns:
         df (DataFrame): DataFrame con transformaciones útiles
-
+        new_vals (list): Lista de variables transformadas nuevas en el dataframe
     """
     df = DF.copy()
 
-    df, numeric = augment_numeric(df)
-    df, fecha = augment_date(df)
-    df, catego = augment_categories(df)
+    df, numeric = augment_numeric(df, response)
+    df, fecha = augment_date(df, response)
+    df, catego = augment_categories(df, response)
 
     aug_vars = numeric + fecha + catego
 
