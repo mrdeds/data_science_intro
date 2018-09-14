@@ -126,7 +126,7 @@ def augment_numeric(DF, response):
         df[varname] = df[i].apply(np.log)
         new_vars.append(varname)
 
-        #si tenemos divisiones entre 0
+        #si tenemos logaritmos que dan infinitos
         df = df.replace(-np.inf, -1000)
         df = df.replace(np.inf, 1000)
 
@@ -248,7 +248,7 @@ def augment_categories(DF, response):
     return df, new_vars
 
 
-def augment_data(DF, response, treshold=0.1):
+def augment_data(DF, response, treshold=0.1, categories=False):
     """
     Prueba ciertas transformaciones numéricas y verifica si la correlación es buena
     para agregarlas al dataframe
@@ -263,10 +263,11 @@ def augment_data(DF, response, treshold=0.1):
         new_vals (list): Lista de variables transformadas nuevas en el dataframe
     """
     df = DF.copy()
-
+    catego = []
     df, numeric = augment_numeric(df, response)
     df, fecha = augment_date(df, response)
-    df, catego = augment_categories(df, response)
+    #suele tardarse mucho la transformación de categorías
+    if categories: df, catego = augment_categories(df, response)
 
     aug_vars = numeric + fecha + catego
 
