@@ -18,15 +18,20 @@ def divide_cats(DF, categorias):
         categorias(list): lista con categorias del Data Frame
 
     Returns:
-        DF (DataFrame): con columnas con categorías separadas
+        DF (DataFrame): con columnas con categorías separada
+        new_vars (list): lista con las variables añadidas
     """
     for cat in categorias:
         list_val_cats = set([value for value in DF[cat]]) #tomamos cada valor que tenga la categoría
         for value in list_val_cats:
-            DF[cat+"_"+value] = 0
-            DF.loc[DF[cat] == value, cat+"_"+value] = 1
+            varname = cat + "_" + value
+            DF[varname] = 0
+            new_vars.append(varname)
+            DF.loc[DF[cat] == value, varname] = 1
 
-    return DF
+    return DF, new_vars
+
+
 
 
 def nan_to_avg(DF):
@@ -49,8 +54,180 @@ def nan_to_avg(DF):
             print(e)
     return DF
 
+def check_correl(DF, var_list, response, treshold=0.1):
+    """
+    De una lista de variables quita las que tengan menor correlación del DataFrame
 
-def augment_data(DF, response, correl=0.1, datetrans=False, convertdummies=False, dummy_transform=False):
+    Args:
+        - DF (Dataframe): Dataframe con los datos aumentados
+        - var_list (list): lista de variables a verificar correlación
+    """
+    df = DF.copy()
+    dropped = []
+    # Correlación con cada variable de la lista contra la variable dependiente
+    for varname in var_list:
+        correl = df[[varname, response]].corr()[response][0]
+        if abs(correl) < abs(treshold):
+            dropped.append([varname, correl]) #añadimos a la lista de las que eliminamos
+            df.drop(varname, 1) #eliminamos la columna que no cumple con correlación mínima
+
+    return df, dropped
+
+
+def augment_numeric(DF):
+    """
+    Crea una lista con transformación de variables numéricas del DataFrame
+
+    Args:
+        DF (Dataframe): Dataframe con los datos numéricos a aumentar
+        new_vars (list): lista con nombre de variables añadidas
+    """
+    df = DF.copy()
+
+    numericas = list(df.select_dtypes(include=['int','float']).columns)
+
+    df = nan_to_avg(df) #cambiar a función que predice valores
+
+    numericas = [x for x in numericas if x != response]
+    new_vars = []
+
+    for i in numericas:
+        new_vars.append(i)
+
+        varname = i + '^' + str(2)
+        # Variable al cuadrado
+        df[varname] = df[i]**2
+        new_vars.append(varname)
+
+        varname = i + '^' + str(3)
+        # Variable al cubo
+        df[varname] = df[i]**3
+        new_vars.append(varname)
+
+        varname = 'sqrt(' + i + ')'
+        # Raíz cuadrada de la variable
+        df[varname] = np.sqrt(df[i])
+        new_vars.append(varname)
+
+        varname = '1/' + i
+        # Inverso de la variable
+        df[varname] = 1 / df[i]
+        new_vars.append(varname)
+
+        varname = 'log(' + i + ')'
+        # Logaritmo de la variable
+        df[varname] = df[i].apply(np.log)
+        new_vars.append(varname)
+
+        #si tenemos divisiones entre 0
+        df = df.replace(-np.inf, -1000)
+        df = df.replace(np.inf, 1000)
+
+    return df, new_vars
+
+def augment_date(DF):
+    """
+    Crea una lista con transformación de variables de fechas del DataFrame
+
+    Args:
+        DF (Dataframe): Dataframe con los datos de fechas aumentados
+    """
+    fechas = list(df.select_dtypes(include=['datetime']).columns)
+
+    df = nan_to_avg(df)
+    fechas = [x for x in fechas if x != response]
+
+    newvars = []
+    unuseful = []
+    acum_fechas = []
+    new_vars = []
+
+    for i in fechas:
+        new_vars.append(varname)
+        varname = 'hora_' + i
+        # Hora de la fecha
+        df[varname] = df[i].dt.hour
+        df,added = divide_cats(df, varname) #se convierte en una categoría
+        new_vars = new_vars + added
+
+        varname = 'dia_' + i
+        # Día de la fecha
+        df[varname] = df[i].dt.day
+        df,added = divide_cats(df, varname) #se convierte en una categoría
+        new_vars = new_vars + added
+
+        varname = 'mes_' + i
+        # Mes de la fecha
+        df[varname] = df[i].dt.month
+        df,added = divide_cats(df, varname) #se convierte en una categoría
+        new_vars = new_vars + added
+
+        varname = 'dia_semana'
+        # Día de la semana
+        df[varname] = df[i].dt.weekday()
+        df,added = divide_cats(df, varname) #se convierte en una categoría
+        new_vars = new_vars + added
+
+        acum_fechas.append(i)
+
+        for j in [x for x in fechas if x not in acum_fechas]:
+            # Por cada fecha vamos a tomar la diferencia entre esa fecha y las demás
+            # Diferencia de fechas (en días)
+            varname = i + '-' + j
+            df.loc[(df[i].notnull()) & (df[j].notnull()), varname] = (df[i] - df[j]).dt.days
+            new_vars.append(varname)
+
+    return df, new_vars
+
+
+def augment_categories(DF):
+    """
+    Se hacen transformaciones con operaciones lógicas entre variables categóricas
+    dentro de un Dataframe
+    """
+    dummy_vars = []
+    for i in df.columns:
+        if set(df[i].unique()) == set([0, 1]):
+            dummy_vars.append(i)
+
+    if response in dummy_vars: dummy_vars.remove(response)
+    new_vars = []
+    for i in dummy_vars:
+        new_vars.append(i)
+        for j in [x for x in dummy_vars if x not in acum]:
+            # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
+            varname = i + '*' + j
+            df[varname] = df[i] and df[j]
+            new_vars.append(varname)
+
+            varname = i + '+' + j
+            df[varname] = df[i] or df[j]
+            new_vars.append(varname)
+
+            varname = 'nand(' + i + ',' + j + ')'
+            new_vars.append(varname)
+            df[varname] = not(df[i] and df[j])
+
+            varname = 'nor(' + i + ',' + j + ')'
+            new_vars.append(varname)
+            df[varname] = not(df[i] or df[j])
+
+            varname = 'xor(' + i + ',' + j + ')'
+            new_vars.append(varname)
+            df[varname] = (df[i] and not(df[j])) or (not(df[i]) and df[j])
+
+            varname = 'xnor(' + i + ',' + j + ')'
+            new_vars.append(varname)
+            df[varname] = (df[i] and df[j]) or (not(df[i]) and not(df[j]))
+
+    #Algunas operaciones se quedan en valores lógicos. Hay que pasarlas a binarias
+    for var in new_vars:
+        df.loc[df[var] == True, var] = 1
+        df.loc[df[var] == False, var] = 0
+
+    return df, new_vars
+
+def augment_data(DF, response, treshold=0.1):
     """
     Prueba ciertas transformaciones numéricas y verifica si la correlación es buena
     para agregarlas al dataframe
@@ -70,179 +247,16 @@ def augment_data(DF, response, correl=0.1, datetrans=False, convertdummies=False
     """
     df = DF.copy()
 
-    numericas = list(df.select_dtypes(include=['int','float']).columns)
-    fechas = list(df.select_dtypes(include=['datetime']).columns)
+    df, numeric = augment_numeric(df)
+    df, fecha = augment_date(df)
+    df, catego = augment_categories(df)
 
-    df = nan_to_avg(df)
+    aug_vars = numeric + fecha + catego
 
-    numericas = [x for x in numericas if x != response]
-    fechas = [x for x in fechas if x != response]
+    df, dropped = check_correl(df, aug_vars, response, treshold)
 
-    newvars = []
-    unuseful = []
-
-    if convertdummies != False:
-        cat = list(df.select_dtypes(include=['category', 'object']).columns)
-        df = pd.get_dummies(df, columns=cat)
-
-    # En caso de querer transformaciones en nuestras variables binarias hay
-    # un gran tiempo de espera
-    if dummy_transform != False:
-        dummy_vars = []
-        for i in df.columns:
-            if set(df[i].unique()) == set([0, 1]):
-                dummy_vars.append(i)
-
-        dummy_vars = [x for x in dummy_vars if x != response]
-        fechas = [i for i in fechas if i not in dummy_vars]
-        numericas = [i for i in numericas if i not in dummy_vars]
-
-        acum = []
-        for i in dummy_vars:
-            acum.append(i)
-            for j in [x for x in dummy_vars if x not in acum]:
-                # Multiplicación de conectores lógicos (AND)
-                varname = i + '*' + j
-                df[varname] = df[i] * df[j]
-                correlagg = df[[varname, response]].corr()[response][0]
-                # Se agrega si supera la correlación mínima
-                if abs(correlagg) > abs(correl):
-                    newvars.append(varname)
-                else:
-                    unuseful.append(varname)
-
-    if datetrans != False:
-        acum_fechas = []
-        for i in fechas:
-            varname = 'hora_' + i
-            # Hora de la fecha
-            df[varname] = df[i].dt.hour
-            correlhora = df[[varname, response]].corr()[response][0]
-
-            # Se agrega si supera la correlación mínima
-            if abs(correlhora) > abs(correl):
-
-                newvars.append(varname)
-            else:
-                unuseful.append(varname)
-
-            varname = 'dia_' + i
-            # Día de la fecha
-            df[varname] = df[i].dt.day
-            correldia = df[[varname, response]].corr()[response][0]
-
-            # Se agrega si supera la correlación mínima
-            if abs(correldia) > abs(correl):
-
-                newvars.append(varname)
-            else:
-                unuseful.append(varname)
-
-            varname = 'mes_' + i
-            # Mes de la fecha
-            df[varname] = df[i].dt.month
-            correlmes = df[[varname, response]].corr()[response][0]
-
-            # Se agrega si supera la correlación mínima
-            if abs(correlmes) > abs(correl):
-
-                newvars.append(varname)
-            else:
-                unuseful.append(varname)
-
-            acum_fechas.append(i)
-            for j in [x for x in fechas if x not in acum_fechas]:
-                # Diferencia de fechas (en días)
-                varname = i + '-' + j
-                df.loc[(df[i].notnull()) & (df[j].notnull()), varname] = (df[i] - df[j]).dt.days
-                correldif = df[[varname, response]].corr()[response][0]
-                # Se agrega si supera la correlación mínima
-                if abs(correldif) > abs(correl):
-                    newvars.append(varname)
-                else:
-                    unuseful.append(varname)
-
-    for i in numericas:
-        # Correlación sin transformación
-        correl1 = df[[i, response]].corr()[response][0]
-        varname = i + '^' + str(2)
-        # Variable al cuadrado
-        df[varname] = df[i]**2
-
-        # Correlación con cada variable al cuadrado
-        correl2 = df[[varname, response]].corr()[response][0]
-        # Se agrega si supera la correlación mínima y la correlación sin transformación
-        if abs(correl2) > abs(correl) and abs(correl2) > abs(correl1):
-
-            newvars.append(varname)
-        else:
-            unuseful.append(varname)
-
-        varname = i + '^' + str(3)
-        # Variable al cubo
-        df[varname] = df[i]**3
-
-        # Correlación con cada variable al cubo
-        correl3 = df[[varname, response]].corr()[response][0]
-
-        # Se agrega si supera la correlación mínima y la correlación sin transformación
-        if abs(correl3) > abs(correl) and abs(correl3) > abs(correl1):
-
-            newvars.append(varname)
-        else:
-            unuseful.append(varname)
-
-        varname = 'sqrt(' + i + ')'
-        # Raíz cuadrada de la variable
-        df[varname] = np.sqrt(df[i])
-
-        # Correlación con la raíz cuadrada de cada variable
-        correlsqrt = df[[varname, response]].corr()[response][0]
-
-        # Se agrega si supera la correlación mínima y la correlación sin transformación
-        if abs(correlsqrt) > abs(correl) and abs(correlsqrt) > abs(correl1):
-
-            newvars.append(varname)
-        else:
-            unuseful.append(varname)
-
-        varname = '1/' + i
-        # Inverso de la variable
-        df[varname] = 1 / df[i]
-
-        # Correlación con el inverso de cada variable
-        correlinv = df[[varname, response]].corr()[response][0]
-
-        # Se agrega si supera la correlación mínima y la correlación sin transformación
-        if abs(correlinv) > abs(correl) and abs(correlinv) > abs(correl1):
-
-            newvars.append(varname)
-        else:
-            unuseful.append(varname)
-
-        varname = 'log(' + i + ')'
-        # Logaritmo de la variable
-        df[varname] = df[i].apply(np.log)
-
-        # Correlación con el logaritmo de cada variable
-        correllog = df[[varname, response]].corr()[response][0]
-
-        # Se agrega si supera la correlación mínima y la correlación sin transformación
-        if abs(correllog) > abs(correl) and abs(correllog) > abs(correl1):
-
-            newvars.append(varname)
-        else:
-            unuseful.append(varname)
-
-    df = df.drop(unuseful, 1)
-    print('Agregamos las siguientes transformaciones:')
-    display(newvars)
-
-    df = change_nan_to_avg(df)
-
-    df = df.replace(-np.inf, -1000)
-    df = df.replace(np.inf, 1000)
+    new_vals = list(filter(lambda x: x not in dropped, aug_vars))
 
     num = list(df.select_dtypes(include=['int', 'float']).columns)
 
-    return df[num]
+    return df[num], new_vals
