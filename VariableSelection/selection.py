@@ -1,15 +1,21 @@
+#-*- coding: utf-8 -*-
+"""
+Funciones para seleccionar variables que entran en cada modelo
+"""
+
+import logging
+import statsmodels.api as sm
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_classif, f_regression
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.decomposition import PCA
 from sklearn.ensemble import ExtraTreesClassifier
-import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 def kbest(xcols, X, y, sf=f_classif, k=10):
     """
-    Se seleccionan las k variables con mejor relación con la respuesta a través 
+    Se seleccionan las k variables con mejor relación con la respuesta a través
     de pruebas estadísticas
 
     Args:
@@ -128,16 +134,16 @@ def importance_corr(df, response, corr=0.1, fif=0.01, vif=False):
         leakage = fi_cm[(abs(fi_cm['correlation']) >= 0.5) | (fi_cm['importance'] >= 0.01)]
         best_features = fi_cm[(abs(fi_cm['correlation']) >= corr) | (fi_cm['importance'] >= fif)]
 
-        print('Hay ' + str(len(leakage)) + 'variables que pueden presentar data leakage\n')
+        logging.info('Hay ' + str(len(leakage)) + 'variables que pueden presentar data leakage\n')
         for i in leakage['feature'].values:
-            print('Variable: ' + i)
-            print('puede presentar leakage, desea eliminarla? (si o no)')
+            logging.info('Variable: ' + i)
+            logging.info('puede presentar leakage, desea eliminarla? (si o no)')
             answer = input()
             if answer == 'si':
                 best_features = best_features[best_features['feature'] != i]
 
         best_features = best_features.reset_index(drop=True)
-        print('''\nEstas son las variables que estaremos usando, si desea eliminar
+        logging.info('''\nEstas son las variables que estaremos usando, si desea eliminar
         alguna escriba el número que aparece a la izquierda de las variables
         a eliminar, separados por comas''')
         pd.set_option('display.max_rows', 1000)
