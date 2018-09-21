@@ -19,6 +19,13 @@ def my_equal(df1, df2):
     """
     Función que permite comparar dos dataframes aunque no esten en el mismo orden
     sus columnas
+
+    Args:
+        df1 (Dataframe): Dataframe a ser comparado
+        df2: (Dataframe): Segundo dataframe a ser comparado con df1
+
+    Returns:
+        Regresa un booleano [True, False]  si los dataframes df1 y df2 son iguales
     """
     from pandas.util.testing import assert_frame_equal
     try:
@@ -29,7 +36,9 @@ def my_equal(df1, df2):
 
 def test_divide_cats():
     """
-    Evalúa la función divide_cats
+    Evalúa la función divide_cats. La cual hace la divición de variables
+    categóricas. Prueba, si tenemos un dataframe con variables categóricas,
+    la transformación a variables binarias por cada categoría
     """
     data = {'color' : pd.Series(['rojo', 'verde', 'azul']),
             'sabor' : pd.Series(['frambuesa', 'limón', 'chicle']),
@@ -48,9 +57,12 @@ def test_divide_cats():
 
     assert my_equal(df1, df2) == True
 
-def test_divide_cats():
+def test_nan_to_avg():
     """
-    Evalúa la función nan_to_avg
+    Evalúa la función nan_to_avg. La cual hace la búsqueda de valores nan en un
+    DataFrame, los elimina y los rellena con el valor promedio de la columna.
+    Esta prueba es para ver si hace, con un dataframe dado, la función en todas las
+    columnas.
     """
     df = pd.DataFrame([[np.nan, 2, np.nan, 0],
                        [3, 4, np.nan, 1],

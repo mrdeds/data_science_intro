@@ -53,7 +53,7 @@ def nan_to_avg(DF):
     return DF
 
 
-def check_correl(DF, var_list, response, treshold=0.1):
+def drop_correlation(DF, var_list, response, treshold=0.1):
     """
     De una lista de variables quita las que tengan menor correlación del DataFrame
 
@@ -250,8 +250,9 @@ def augment_categories(DF, response):
 
 def augment_data(DF, response, treshold=0.1, categories=False):
     """
-    Prueba ciertas transformaciones numéricas y verifica si la correlación es buena
-    para agregarlas al dataframe
+    Prueba ciertas transformaciones numéricas, de fecha y categóricas.
+    Verifica si la correlación es buena, a partir de un threshold,
+    para agregarlas al dataframe resultante
 
     Args:
         DF (DataFrame): DataFrame de tus datos
