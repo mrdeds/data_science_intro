@@ -46,7 +46,8 @@ def rec_feat_elim(xcols, X, y, estimator=LogisticRegression(), k=10):
         xcols (array): Con los nombres de las variables en X
         X (array): Matriz de inputs
         y (array): Vector de variable objetivo
-        estimator (model): Modelo de scikit-learn (LogisticRegression(), LinearRegression())
+        estimator (model): Modelo de scikit-learn
+                           (LogisticRegression(), LinearRegression())
         k (int): Número de variables
     Returns:
         features (list): Lista con las k mejores variables
@@ -83,7 +84,7 @@ def get_vif(df):
     Args:
         df (DataFrame): DataFrame con datos de nuestras variables independientes
     Returns:
-        vif (DataFrame): DataFrame con el factor de inflación de la varianza \
+        vif (DataFrame): DataFrame con el factor de inflación de la varianza
                          de cada variable
     """
     vif = pd.DataFrame()
@@ -108,65 +109,54 @@ def importance_corr(df, response, corr=0.1, fif=0.01, vif=False):
     Returns:
         best_features (DataFrame): Con variables, correlaciones e importancia
     """
-
     X = df.drop(response, 1).values
     y = df[response].values
+    etc = ExtraTreesClassifier()
+    etc.fit(X, y)
+    cm = pd.DataFrame(df.corr()[response])
+    cm = cm.reset_index()
+    cm.columns = ['feature', 'correlation']
+    cm = cm[cm['feature'] != response]
+    f = pd.DataFrame(df.columns, columns=['feature'])
+    f = f[f['feature'] != response]
+    f['importance'] = etc.feature_importances_
+    fi_cm = pd.merge(f, cm, on='feature')
+    if vif != False:
+        VF = get_vif(df)
+        fi_cm = pd.merge(fi_cm, VF, on= 'feature')
 
-    # Revisamos si es modelo de clasificación binaria
-    if set(df[response].unique()) == set([0, 1]):
-        # Si es clasificación binaria probamos con regresión logística
-        # que es el modelo más sencillo para esto
+    leakage = fi_cm[(abs(fi_cm['correlation']) >= 0.5) | \
+                    (fi_cm['importance'] >= 0.01)]
+    best_features = fi_cm[(abs(fi_cm['correlation']) >= corr) | \
+                          (fi_cm['importance'] >= fif)]
+    logging.info('Hay ' + str(len(leakage)) + 'variables que pueden \
+                                            presentar data leakage\n')
+    for i in leakage['feature'].values:
+        logging.info('Variable: ' + i)
+        logging.info('puede presentar leakage, desea eliminarla? (si o no)')
+        answer = input()
+        if answer == 'si':
+            best_features = best_features[best_features['feature'] != i]
 
-        etc = ExtraTreesClassifier()
-        etc.fit(X, y)
-        cm = pd.DataFrame(df.corr()[response])
-        cm = cm.reset_index()
-        cm.columns = ['feature', 'correlation']
-        cm = cm[cm['feature'] != response]
+    best_features = best_features.reset_index(drop=True)
+    logging.info('''\nEstas son las variables que estaremos usando, si \
+    desea eliminar alguna escriba el número que aparece a la izquierda de \
+    las variables a eliminar, separados por comas''')
+    pd.set_option('display.max_rows', len(best_features))
+    display(best_features)
 
-        f = pd.DataFrame(df.columns, columns=['feature'])
-        f = f[f['feature'] != response]
-        f['importance'] = etc.feature_importances_
-        fi_cm = pd.merge(f, cm, on='feature')
-
-        if vif != False:
-            VF = get_vif(df)
-            fi_cm = pd.merge(fi_cm, VF, on= 'feature')
-
-        leakage = fi_cm[(abs(fi_cm['correlation']) >= 0.5) | \
-                        (fi_cm['importance'] >= 0.01)]
-        best_features = fi_cm[(abs(fi_cm['correlation']) >= corr) | \
-                              (fi_cm['importance'] >= fif)]
-
-        logging.info('Hay ' + str(len(leakage)) + 'variables que pueden \
-                                                presentar data leakage\n')
-        for i in leakage['feature'].values:
-            logging.info('Variable: ' + i)
-            logging.info('puede presentar leakage, desea eliminarla? (si o no)')
-            answer = input()
-            if answer == 'si':
-                best_features = best_features[best_features['feature'] != i]
-
-        best_features = best_features.reset_index(drop=True)
-        logging.info('''\nEstas son las variables que estaremos usando, si \
-        desea eliminar alguna escriba el número que aparece a la izquierda de \
-        las variables a eliminar, separados por comas''')
-        pd.set_option('display.max_rows', len(best_features))
-        display(best_features)
-
-        elim = input()
-
-        if elim != '':
-            elim = elim.replace(' ', '')
-            elim = elim.split(',')
-            ranges = [i for i in elim if '-' in i]
-            nonranges = [int(i) for i in elim if i not in ranges]
-            r = []
-            for x in ranges:
-                rn = list(range(int(x.split('-')[0]), int(x.split('-')[1])))
-                r.extend(rn)
-            r.append(r[-1] + 1)
-            nonranges.extend(r)
-            best_features = best_features.drop(nonranges)
+    elim = input()
+    if elim != '':
+        elim = elim.replace(' ', '')
+        elim = elim.split(',')
+        ranges = [i for i in elim if '-' in i]
+        nonranges = [int(i) for i in elim if i not in ranges]
+        r = []
+        for x in ranges:
+            rn = list(range(int(x.split('-')[0]), int(x.split('-')[1])))
+            r.extend(rn)
+        r.append(r[-1] + 1)
+        nonranges.extend(r)
+        best_features = best_features.drop(nonranges)
 
     return best_features
