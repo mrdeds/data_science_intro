@@ -7,7 +7,9 @@ import random
 from network import Network
 
 class Optimizador():
-    """Clase que implementa los algoritmos genéticos para optimizar las redes candidatas."""
+    """
+    Clase que implementa los algoritmos genéticos para optimizar las redes candidatas.
+    """
 
     def __init__(self, nn_params, retiene=0.4,
                  random_selec=0.1, proba_muta=0.2):
@@ -48,21 +50,23 @@ class Optimizador():
         return poblacion
 
     @staticmethod # para utilizarlo desde una instancia de la clase
-    def fitness(red):
-        """Devuelve la precisión. Que es nuestra variable de """
+    def aptitud(red):
+        """
+        Devuelve la precisión. Que es nuestra variable de aptitud
+        """
         return red.accuracy
 
     def avg_pob(self, poblacion):
-        """Encuentra el promedio de fitness de una población.
+        """Encuentra el promedio de aptitud de una población.
 
         Args:
             poblacion (list): la poblacion de redes
 
         Returns:
-            avg (float): el promedio del fitness de la población
+            avg (float): el promedio del aptitud de la población
 
         """
-        summed = reduce(add, (self.fitness(network) for network in pop))
+        summed = reduce(add, (self.aptitud(network) for network in pop))
         avg = summed / float((len(pop)))
         return avg
 
@@ -130,7 +134,7 @@ class Optimizador():
 
         """
         # Obtenemos el accuracy de cada red
-        evaluacion = [(self.fitness(red), red) for red in poblacion]
+        evaluacion = [(self.aptitud(red), red) for red in poblacion]
 
         # Ordenamos por accuracy
         evaluacion = [x[1] for x in sorted(evaluacion, key=lambda x: x[0], reverse=True)]

@@ -9,66 +9,43 @@ from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 import numpy as np
 
-# si después de 5 epoch no mejora se detiene el entrenamiento de ese modelo
+# si después de 5 epochs no mejora se detiene el entrenamiento de ese modelo
 early_stopper = EarlyStopping(patience=5)
 
-def clean_data(df):
-    """Retrieve the CIFAR dataset and process the data."""
-    # Set defaults.
-    nb_classes = 10
-    batch_size = 64
-    input_shape = (3072,)
-
-    # Get the data.
-    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-    x_train = x_train.reshape(50000, 3072)
-    x_test = x_test.reshape(10000, 3072)
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
-    x_train /= 255
-    x_test /= 255
-
-    # convert class vectors to binary class matrices
-    y_train = to_categorical(y_train, nb_classes)
-    y_test = to_categorical(y_test, nb_classes)
-
-    return (nb_classes, batch_size, input_shape, x_train, x_test, y_train, y_test)
-
-
-
-def compile_model(network, nb_classes, input_shape):
-    """Compile a sequential model.
+def compila_modelo(red, outputs, inputs):
+    """Compila un modelo secuencial.
 
     Args:
-        network (dict): the parameters of the network
+        red (dict): the parameters of the network
+
 
     Returns:
-        a compiled network.
+        model(Keras.model): Una red compilada.
 
     """
-    # Get our network parameters.
-    nb_layers = network['nb_layers']
-    nb_neurons = network['nb_neurons']
-    activation = network['activation']
-    optimizer = network['optimizer']
+    # Obtenemos los parámetros de nuestra red.
+    num_capas = red['num_capas']
+    num_neurons = red['num_neurons']
+    activacion = red['activacion']
+    optimizador = red['optimizador']
 
     model = Sequential()
 
-    # Add each layer.
-    for i in range(nb_layers):
-
-        # Need input shape for first layer.
+    # Se añade cada capa.
+    for i in range(num_capas):
+        # Necesitamos el número de inputs para la primer capa.
         if i == 0:
-            model.add(Dense(nb_neurons, activation=activation, input_shape=input_shape))
+            model.add(Dense(num_neurons, activation=activacion, input_shape=inputs))
         else:
-            model.add(Dense(nb_neurons, activation=activation))
+            model.add(Dense(num_neurons, activation=activacion))
 
-        model.add(Dropout(0.2))  # hard-coded dropout
+        model.add(Dropout(0.2))
+        # le añadimos una capa de Dropout antes de la última para mejor desempeño
 
-    # Output layer.
-    model.add(Dense(nb_classes, activation='softmax'))
+    # Capa de salida.
+    model.add(Dense(outputs, activation='sigmoid'))
 
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer,
+    model.compile(loss='mean_squared_error', optimizer=optimizador,
                   metrics=['accuracy'])
 
     return model
@@ -89,7 +66,7 @@ def entrena_red(red, datos_listos):
     X_train, X_test, y_train, y_test = datos_listos
     inputs = X_train[0].size #número de inputs de la red a partir de # de datos
     outputs = 1
-    model = compile_model(red, outputs, inputs)
+    model = compila_modelo(red, outputs, inputs)
 
     model.fit(X_train, y_train,
               batch_size=batch_size,

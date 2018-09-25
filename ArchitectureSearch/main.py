@@ -70,7 +70,8 @@ def get_average_accuracy(redes):
     return res
 
 def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
-    """Genera red nueva con algoritmo genético.
+    """
+    Genera red nueva con algoritmo genético.
 
     Args:
         generaciones (int): numero de veces que se va a evolucionar una población
@@ -118,12 +119,22 @@ def imprime_redes(redes):
         red.imprime_red()
 
 def main():
-    """Evoluciona una red."""
+    """
+    Ejemplo de evolucion de una red.
+    """
+    # Obtenemos las claves de conexión
+    with open('creds.txt', encoding='utf-8') as data_file:
+        creds = json.loads(data_file.read())
+
+    conn = db_connection(creds) # Hacemos una conexión a la base con sus credenciales
+
     generaciones = 10  # Número de veces a evolucionar una población
     tam_poblacion = 20  # número de redes en una población.
-    response = 'cierre'
-    conn = db_connection(*args)# investigar
-    df = download_data(conn)
+    response = 'status_cierre'
+    df = clean_data(df, max_unique=1000, response=response, mp=0.4, safezone=None,
+                   printdrops=False)
+    query "select * from salesforce_lead__c"
+    df = download_data(conn, query)
 
     nn_param_candidatos  = {
         'nb_neurons': [64, 128, 256, 512, 768, 1024],
