@@ -29,7 +29,7 @@ class Red():
     def red_aleatoria(self):
         """Crea una red aleatoria a partir de los parámetos provistos"""
         for key in self.nn_param_candidatos:
-            self.red[key] = random.choice(self.nn_param_choices[key])
+            self.red[key] = random.choice(self.nn_param_candidatos[key])
 
     def create_red(self, red):
         """Asigna las propiedades de una red.
@@ -54,6 +54,6 @@ class Red():
         """Imprime la representación de la red y su precisión."""
         logging.info(self.red)
         if self.accuracy == 0.:
-            logging.info("Network accuracy: %.2f%%" % (self.accuracy * 100))
+            logging.info("Network accuracy: %.2f%%", self.accuracy * 100)
         else:
             logging.info("Este red parece que aún no ha sido entrenada")
