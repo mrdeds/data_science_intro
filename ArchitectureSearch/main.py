@@ -125,17 +125,18 @@ def main():
     # Obtenemos las claves de conexión
     with open('creds.txt', encoding='utf-8') as data_file:
         creds = json.loads(data_file.read())
-
+    # Obtenemos datos para entrenar
     conn = db_connection(creds) # Hacemos una conexión a la base con sus credenciales
+    query = "select * from salesforce_lead__c"
+    df = download_data(conn, query)
 
     generaciones = 10  # Número de veces a evolucionar una población
     tam_poblacion = 20  # número de redes en una población.
     response = 'status_cierre'
+    
+    # limpiamos los datos antes de entrenar
     df = clean_data(df, max_unique=1000, response=response, mp=0.4, safezone=None,
                    printdrops=False)
-    query "select * from salesforce_lead__c"
-    df = download_data(conn, query)
-
     nn_param_candidatos  = {
         'nb_neurons': [64, 128, 256, 512, 768, 1024],
         'nb_layers': [1, 2, 3, 4],
