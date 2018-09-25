@@ -1,8 +1,10 @@
 """Ejemplo de como se puede utilizar el optimizador de búsqueda de arquitecturas"""
 import logging
-from optimizador import optimizador
+import json
 from tqdm import tqdm
+from optimizador import Optimizador
 from Extract.extract import db_connection, download_data
+from DataCleaning.cleaning import clean_data
 
 # Setup logging
 logging.basicConfig(
@@ -11,6 +13,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     filename='log.txt'
 )
+
 
 def separa_datos(DF, response, test_size=0.25):
     """
@@ -27,12 +30,13 @@ def separa_datos(DF, response, test_size=0.25):
         y_test(np.array): valores de variable a predecir de prueba
     """
     df = DF.copy()
-    X = df.drop(response, axis=1)
+    x = df.drop(response, axis=1)
     y = df[response]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size)
 
-    return X_train, X_test, y_train, y_test
+    return x_train, x_test, y_train, y_test
+
 
 def entrena_redes(poblacion, df, response):
     """Train each network.
@@ -42,14 +46,15 @@ def entrena_redes(poblacion, df, response):
         df (DataFrame): Dataframe con datos de entrenamiento
         response (str): String que indica la variable objetivo
     """
-    pbar = tqdm(total=len(poblacion)) #para ver el avance del entrenamiento de las poblaciones
-
+    # para ver el avance del entrenamiento de las poblaciones
+    pbar = tqdm(total=len(poblacion))
     datos_listos = separa_datos(df, response, test_size=0.25)
 
-    for network in poblacion:
+    for red in poblacion:
         red.entrena(datos_listos)
         pbar.update(1)
     pbar.close()
+
 
 def get_average_accuracy(redes):
     """Obtiene el promedio de accuracy de una lista de redes
@@ -68,6 +73,7 @@ def get_average_accuracy(redes):
     res = total_accuracy / len(redes)
 
     return res
+
 
 def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
     """
@@ -88,14 +94,14 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
                      (i + 1, generaciones))
 
         # Entrena y obtiene accuracy de cada red.
-        entrena_redes(poblacion, df, response)
+        entrena_redes(redes, df, response)
 
         # obtiene el accuracy promedio de esta generación.
-        prom_accuracy = get_average_accuracy(networks)
+        prom_accuracy = get_average_accuracy(redes)
 
         # imprimimos el promedio de accuracy por generación
         logging.info("Promedio de generación: %.2f%%" % (prom_accuracy * 100))
-        logging.info('-'*80)
+        logging.info('-' * 80)
 
         # Seguimos si aún no hemos acabado de optimizar.
         if i != generaciones - 1:
@@ -107,6 +113,7 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
     # Se impirmen el top 5 de las redes finales.
     imprime_redes(networks[:5])
 
+
 def imprime_redes(redes):
     """Imprime una lista de redes.
 
@@ -114,9 +121,10 @@ def imprime_redes(redes):
         redes (list): la población de redes
 
     """
-    logging.info('-'*80)
+    logging.info('-' * 80)
     for red in redes:
         red.imprime_red()
+
 
 def main():
     """
@@ -126,18 +134,19 @@ def main():
     with open('creds.txt', encoding='utf-8') as data_file:
         creds = json.loads(data_file.read())
     # Obtenemos datos para entrenar
-    conn = db_connection(creds) # Hacemos una conexión a la base con sus credenciales
+    # Hacemos una conexión a la base con sus credenciales
+    conn = db_connection(creds)
     query = "select * from salesforce_lead__c"
     df = download_data(conn, query)
 
     generaciones = 10  # Número de veces a evolucionar una población
     tam_poblacion = 20  # número de redes en una población.
     response = 'status_cierre'
-    
+
     # limpiamos los datos antes de entrenar
     df = clean_data(df, max_unique=1000, response=response, mp=0.4, safezone=None,
-                   printdrops=False)
-    nn_param_candidatos  = {
+                    printdrops=False)
+    nn_param_candidatos = {
         'nb_neurons': [64, 128, 256, 512, 768, 1024],
         'nb_layers': [1, 2, 3, 4],
         'activation': ['relu', 'elu', 'tanh', 'sigmoid'],
@@ -149,6 +158,7 @@ def main():
                  (generaciones, tam_poblacion))
 
     genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response)
+
 
 if __name__ == '__main__':
     main()

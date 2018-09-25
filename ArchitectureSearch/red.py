@@ -5,6 +5,7 @@ import random
 import logging
 from entrena import entrena_red
 
+
 class Red():
     """
     Clase que representa una red neuronal simple  de varias capas (MLP).
@@ -21,7 +22,7 @@ class Red():
                 activacion (list): ['relu', 'elu']
                 optimizador (list): ['rmsprop', 'adam']
         """
-        self.accuracy = 0. #aún no tiene presición, aún no se entrena
+        self.accuracy = 0.  # aún no tiene presición, aún no se entrena
         self.nn_param_candidatos = nn_param_candidatos
         self.red = {}  # (dic): representa la red recien instanciada
 
@@ -46,7 +47,7 @@ class Red():
             datos_listos(tuple): tupla con los datos que van a utilizarse
 
         """
-        if self.accuracy == 0.: #solo se entrenan redes nuevas
+        if self.accuracy == 0.:  # solo se entrenan redes nuevas
             self.accuracy = entrena_red(self.red, datos_listos)
 
     def imprime_red(self):

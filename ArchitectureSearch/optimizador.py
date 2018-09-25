@@ -1,10 +1,10 @@
 """
 Clase que contiene los algoritmos genéticos para optimizar las redes candidatas.
 """
-from functools import reduce
-from operator import add
 import random
-from network import Network
+from operator import add
+from functools import reduce
+from red import Red
 
 class Optimizador():
     """
@@ -42,14 +42,14 @@ class Optimizador():
         for _ in range(0, tam):
             # Crea una red neuronal aleatoria.
             red = Red(self.nn_params)
-            red.crea_aleatorio()
+            red.red_aleatoria()
 
             # se añade la red a la población.
-            pop.append(network)
+            poblacion.append(red)
 
         return poblacion
 
-    @staticmethod # para utilizarlo desde una instancia de la clase
+    @staticmethod  # para utilizarlo desde una instancia de la clase
     def aptitud(red):
         """
         Devuelve la precisión. Que es nuestra variable de aptitud
@@ -66,8 +66,8 @@ class Optimizador():
             avg (float): el promedio del aptitud de la población
 
         """
-        summed = reduce(add, (self.aptitud(network) for network in pop))
-        avg = summed / float((len(pop)))
+        suma = reduce(add, (self.aptitud(red) for red in poblacion))
+        avg = suma / float((len(poblacion)))
         return avg
 
     def cruza(self, madre, padre):
@@ -94,8 +94,8 @@ class Optimizador():
                 )
 
             # Se crea un objeto Red nuevo
-            red = Red(self.nn_param_choices)
-            red.crea_red(hijo)
+            red = Red(self.nn_params)
+            red.red(hijo)
 
             # Randomly mutate some of the children.
             if self.proba_muta > random.random():
@@ -137,10 +137,11 @@ class Optimizador():
         evaluacion = [(self.aptitud(red), red) for red in poblacion]
 
         # Ordenamos por accuracy
-        evaluacion = [x[1] for x in sorted(evaluacion, key=lambda x: x[0], reverse=True)]
+        evaluacion = [x[1] for x in sorted(
+            evaluacion, key=lambda x: x[0], reverse=True)]
 
         # Obtenemos el número de redes definido para cada iteración
-        retiene_len = int(len(evaluacion)*self.retiene)
+        retiene_len = int(len(evaluacion) * self.retiene)
 
         # lospadres son todas las redes más aptas que queremos retener
         padres = evaluacion[:retiene_len]
@@ -159,8 +160,8 @@ class Optimizador():
         while len(hijos) < tam_deseado:
 
             # hacemos parejas aleatoria de padres.
-            padre = random.randint(0, padres_len-1)
-            madre = random.randint(0, padres_len-1)
+            padre = random.randint(0, padres_len - 1)
+            madre = random.randint(0, padres_len - 1)
 
             # probamos que no sean la misma red seleccionada madre y padre
             if padre != madre:
