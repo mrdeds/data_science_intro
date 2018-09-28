@@ -6,7 +6,6 @@ Limpieza de datos
 import pandas as pd
 import numpy as np
 
-
 def clean_numeric(df, numericas, mp=0.4):
     """
     Limpieza de datos numéricos
@@ -133,12 +132,13 @@ def clean_data(df, max_unique=1000, response=None, mp=0.4, safezone=None,
     DF = DF.drop(numericas_dropped,1) # drop de numericas que no sirven
     DF = DF.drop(categoricas_dropped,1) # drop de categoricas que no sirven
     DF = DF.drop(fechas_dropped,1) # drop de fechas que no sirven
+
     if printdrops != False:
         print('Numéricas que eliminamos:')
-        display(numericas_dropped)
+        print(numericas_dropped)
         print('Categóricas que eliminamos:')
-        display(categoricas_dropped)
+        print(categoricas_dropped)
         print('Fechas que eliminamos:')
-        display(fechas_dropped)
+        print(fechas_dropped)
 
     return DF
