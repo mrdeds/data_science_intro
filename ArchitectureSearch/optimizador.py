@@ -95,9 +95,9 @@ class Optimizador():
 
             # Se crea un objeto Red nuevo
             red = Red(self.nn_params)
-            red.red(hijo)
+            red.create_red(hijo)
 
-            # Randomly mutate some of the children.
+            # Se eligen aleatoriamente algunos hijos para mutarlos
             if self.proba_muta > random.random():
                 red = self.muta(red)
 

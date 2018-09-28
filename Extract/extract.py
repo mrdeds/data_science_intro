@@ -48,13 +48,10 @@ def download_data(conn, query):
         df (DataFrame): Tabla con los datos que elegimos
     """
     try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        data_sql = cursor.fetchall()
+        df = pd.read_sql(query, conn)
         conn.commit()
     finally:
         conn.close()
 
-    df = pd.DataFrame(data_sql) # Ponemos datos en DataFrame
 
     return df

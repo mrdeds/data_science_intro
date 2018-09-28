@@ -3,6 +3,8 @@ Clase que define una red a ser evolucionada
 """
 import random
 import logging
+import sys
+sys.path.append('../')
 from entrena import entrena_red
 
 
@@ -47,13 +49,12 @@ class Red():
             datos_listos(tuple): tupla con los datos que van a utilizarse
 
         """
-        if self.accuracy == 0.:  # solo se entrenan redes nuevas
-            self.accuracy = entrena_red(self.red, datos_listos)
+        self.accuracy = entrena_red(self.red, datos_listos)
 
     def imprime_red(self):
         """Imprime la representación de la red y su precisión."""
         logging.info(self.red)
         if self.accuracy == 0.:
-            logging.info("Network accuracy: %.2f%%", self.accuracy * 100)
+            logging.info("Accuracy de la red: %.2f%%", self.accuracy * 100)
         else:
             logging.info("Este red parece que aún no ha sido entrenada")

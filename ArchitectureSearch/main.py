@@ -3,19 +3,24 @@ import logging
 import json
 from tqdm import tqdm
 from optimizador import Optimizador
+import sys
+sys.path.append('../')
 from Extract.extract import db_connection, download_data
 from DataCleaning.cleaning import clean_data
-
+from transform.transform import augment_data
+import numpy as np
+from sklearn.model_selection import train_test_split
+from transform.transform import nan_to_avg
 # Setup logging
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S %p',
     level=logging.DEBUG,
-    filename='log.txt'
+    #filename='log.txt'
 )
 
 
-def separa_datos(DF, response, test_size=0.25):
+def separa_datos(DF, response, test_size=0.33):
     """
     Separa los datos de entrenamiento y validación que se van a utilizar
     Args:
@@ -30,10 +35,10 @@ def separa_datos(DF, response, test_size=0.25):
         y_test(np.array): valores de variable a predecir de prueba
     """
     df = DF.copy()
-    x = df.drop(response, axis=1)
-    y = df[response]
+    x = np.array(df.drop(response, axis=1))
+    y = list(df[response])
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size)
+    x_train, x_test, y_train, y_test = train_test_split(x, y)
 
     return x_train, x_test, y_train, y_test
 
@@ -48,7 +53,7 @@ def entrena_redes(poblacion, df, response):
     """
     # para ver el avance del entrenamiento de las poblaciones
     pbar = tqdm(total=len(poblacion))
-    datos_listos = separa_datos(df, response, test_size=0.25)
+    datos_listos = separa_datos(df, response, test_size=0.33)
 
     for red in poblacion:
         red.entrena(datos_listos)
@@ -90,7 +95,7 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
 
     # Evoluciona la generación
     for i in range(generaciones):
-        logging.info("***Haciendo genración %d de %d***" %
+        logging.info("***Haciendo generación %d de %d***" %
                      (i + 1, generaciones))
 
         # Entrena y obtiene accuracy de cada red.
@@ -111,7 +116,7 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
     redes = sorted(redes, key=lambda x: x.accuracy, reverse=True)
 
     # Se impirmen el top 5 de las redes finales.
-    imprime_redes(networks[:5])
+    imprime_redes(redes[:5])
 
 
 def imprime_redes(redes):
@@ -135,22 +140,41 @@ def main():
         creds = json.loads(data_file.read())
     # Obtenemos datos para entrenar
     # Hacemos una conexión a la base con sus credenciales
-    conn = db_connection(creds)
-    query = "select * from salesforce_lead__c"
-    df = download_data(conn, query)
+    connect = db_connection(creds)
+    query = '''
+        WITH sl as (select clientecerrado__c, createddate, id, email, phone,
+               recomendado__c, mediocontactoagrupado__c,
+               mediocontactodepurado__c
+               from salesforce_lead
+               where leadsource = 'RTD' and
+               createddate >= DATEADD(month,-3, getdate())
+               order by createddate desc),
+        m as (select email_address, location_dstoff,
+                location_gmtoff, location_latitude,
+                location_longitude, member_rating,
+                stats_avg_click_rate, stats_avg_open_rate,
+                email_client, location_country_code,
+                status from mailchimp_members)
 
-    generaciones = 10  # Número de veces a evolucionar una población
+        select * from sl left join m on sl.email = m.email_address
+
+            limit 5000'''
+
+    df = download_data(connect, query)
+
+    generaciones = 2  # Número de veces a evolucionar una población
     tam_poblacion = 20  # número de redes en una población.
-    response = 'status_cierre'
+    response = 'clientecerrado__c'
 
     # limpiamos los datos antes de entrenar
-    df = clean_data(df, max_unique=1000, response=response, mp=0.4, safezone=None,
-                    printdrops=False)
+    df = clean_data(df, max_unique=1000, response=response)
+    df, var_nuevas = augment_data(df, response, treshold=0.1, categories=True)
+
     nn_param_candidatos = {
-        'nb_neurons': [64, 128, 256, 512, 768, 1024],
-        'nb_layers': [1, 2, 3, 4],
-        'activation': ['relu', 'elu', 'tanh', 'sigmoid'],
-        'optimizer': ['rmsprop', 'adam', 'sgd', 'adagrad',
+        'num_neurons': [64, 128, 256, 512, 768, 1024],
+        'num_capas': [1, 2, 3, 4],
+        'activacion': ['relu', 'elu', 'tanh', 'sigmoid'],
+        'optimizador': ['rmsprop', 'adam', 'sgd', 'adagrad',
                       'adadelta', 'adamax', 'nadam'],
     }
 
