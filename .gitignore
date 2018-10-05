@@ -12,3 +12,4 @@ mydatabase
 *.pytest_cache
 *.egg-info*
 creds.txt
+log.txt

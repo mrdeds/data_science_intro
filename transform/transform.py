@@ -214,7 +214,7 @@ def augment_date(DF, response):
     return df, new_vars
 
 
-def augment_categories(DF, response):
+def augment_categories(DF, response, exclude_metadata=True):
     """
     Se hacen transformaciones con operaciones lógicas entre variables categóricas
     dentro de un Dataframe
@@ -233,13 +233,19 @@ def augment_categories(DF, response):
         if set(df[i].unique()) == set([0, 1]):
             dummy_vars.append(i)
 
+    if exclude_metadata: [var for var in dummy_vars if not var.startswith('__')]
+
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
+    logging.info("*** Lista de variables a trabajar:{}***".format(dummy_vars))
+
     for i in dummy_vars:
-        logging.info("*** haciendo magia con la variable {}***".format(i))
+        logging.info("*** Haciendo magia con la variable {}***".format(i))
         new_vars.append(i)
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
+            logging.info("""*** Multiplicación de conectores lógicos
+             (AND, OR, NAND, NOR, XOR & XNOR) de {} con {}***""".format(i, j))
             varname = i + '*' + j
             df[varname] = df[i].astype(int) & df[j].astype(int)
             new_vars.append(varname)
@@ -296,7 +302,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
     #suele tardarse mucho la transformación de categorías
     if categories:
         catego = df.select_dtypes(['category'])
-        df, catego = augment_categories(df, response)
+        df, catego = augment_categories(df,response, exclude_metadata=True)
 
 
     aug_vars = numeric + fecha + catego
