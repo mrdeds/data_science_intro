@@ -1,16 +1,15 @@
 """Ejemplo de como se puede utilizar el optimizador de búsqueda de arquitecturas"""
 import logging
 import json
+import numpy as np
+import sys
 from tqdm import tqdm
 from optimizador import Optimizador
-import sys
 sys.path.append('../')
-from Extract.extract import db_connection, download_data
+from Extract.extract import db_extraction
 from DataCleaning.cleaning import clean_data
 from transform.transform import augment_data
-import numpy as np
 from sklearn.model_selection import train_test_split
-from transform.transform import nan_to_avg
 # Setup logging
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -140,7 +139,7 @@ def main():
         creds = json.loads(data_file.read())
     # Obtenemos datos para entrenar
     # Hacemos una conexión a la base con sus credenciales
-    connect = db_connection(creds)
+    #connect = db_connection(creds)
     query = '''
         WITH sl as (select clientecerrado__c, createddate, id, email, phone,
                recomendado__c, mediocontactoagrupado__c,
@@ -160,7 +159,7 @@ def main():
 
             limit 5000'''
 
-    df = download_data(connect, query)
+    df = db_extraction('panoply', query)
 
     generaciones = 2  # Número de veces a evolucionar una población
     tam_poblacion = 20  # número de redes en una población.

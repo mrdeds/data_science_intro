@@ -5,6 +5,12 @@ Limpieza de datos
 
 import pandas as pd
 import numpy as np
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S %p',
+    level=logging.INFO)
 
 def clean_numeric(df, numericas, mp=0.4):
     """
@@ -95,13 +101,31 @@ def datatypes(df):
         fechas (list): Lista de variables temporales
     """
     # variables numericas
-    numericas = list(df.select_dtypes(include=['int','float']).columns)
+    numericas = list(df.select_dtypes(include=['int','float', 'uint8']).columns)
     # variables categoricas
     categoricas = list(df.select_dtypes(include=['category', 'object']).columns)
     # variables temporales
     fechas = list(df.select_dtypes(include=['datetime']).columns)
 
     return numericas, categoricas, fechas
+
+def rename_duplicates(dfd):
+    """
+    Cambia nombre de columnas con nombres duplicados
+    Args:
+        dfd (DataFrame): Tabla con todos los datos (puede contener duplicados)
+    Returns:
+        df (DataFrame): Tabla con todos los nombres de las columnas diferentes
+    """
+    df = dfd.copy()
+    cols=pd.Series(df.columns)
+    for dup in df.columns.get_duplicates():
+        cols[df.columns.get_loc(dup)] = \
+        [dup + '.' + str(d_idx) if d_idx != 0 else dup for d_idx in range(df.columns.get_loc(dup).sum())]
+    cols = list(cols.values)
+    df.columns = cols
+
+    return df
 
 def clean_data(df, max_unique=1000, response=None, mp=0.4, safezone=None,
                printdrops=False):
@@ -116,8 +140,8 @@ def clean_data(df, max_unique=1000, response=None, mp=0.4, safezone=None,
     Returns:
         DF (DataFrame): DataFrame con todos los datos limpios y útiles
     """
-    DF = df.copy()
-    DF0 = df.copy()
+    DF = rename_duplicates(df)
+    DF0 = DF.copy()
     if response != None:
         DF0 = DF0.drop(response,1)
     numericas, categoricas, fechas = datatypes(DF0)
@@ -134,11 +158,11 @@ def clean_data(df, max_unique=1000, response=None, mp=0.4, safezone=None,
     DF = DF.drop(fechas_dropped,1) # drop de fechas que no sirven
 
     if printdrops != False:
-        print('Numéricas que eliminamos:')
-        print(numericas_dropped)
-        print('Categóricas que eliminamos:')
-        print(categoricas_dropped)
-        print('Fechas que eliminamos:')
-        print(fechas_dropped)
+        logging.info('Numéricas que eliminamos:')
+        logging.info(numericas_dropped)
+        logging.info('Categóricas que eliminamos:')
+        logging.info(categoricas_dropped)
+        logging.info('Fechas que eliminamos:')
+        logging.info(fechas_dropped)
 
     return DF

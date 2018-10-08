@@ -14,6 +14,8 @@ from sklearn.metrics import roc_curve
 
 def model_precision(y_test, predictions, lim, disp=False):
     """
+    Métricas de precisión de un modelo de clasificación
+
     Args:
         y_test (array): Instancias de la variable dependiente
         predictions (array): Predicciones

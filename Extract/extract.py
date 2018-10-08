@@ -5,41 +5,43 @@ Funciones de extracción de datos
 """
 import logging
 import psycopg2
+import os
 import pandas as pd
+from Extract.memory import save_memory
 
-def db_connection(conn_creds):
+def db_connection(db):
     """
-    Método que hace la conexión a la base de datos
-
+    Método que hace la conexión a la base
     Args:
-        conn_creds(dict): diccionario donde vienen las credenciales de
-        la conexión a la base de datos
-                         host(str): host que hospeda a la base de datos
-                         port(str): puerto donde está disponible la base de datos
-                         user(str): usuario con el que se hará la conexión
-                         password(str): contraseña del usuario en la BD
-                         database(str): nombre de la base de datos
+        db (str): 'panoply', 'medicion', 'llamadas'
     Returns:
-        conn: objeto que contiene la sesión de una conexión a la BD
+        conn: conexión
     """
-    try:
-        conn = psycopg2.connect(
-            host=conn_creds['host'],
-            port=conn_creds['port'],
-            user= conn_creds['user'],
-            password=conn_creds['password'],
-            database=conn_creds['database'],
-        )
-        logging.info("Nueva conexión a base: %s", conn_creds['database'])
-    except Exception as error:
-        logging.error(error)
+    if db == 'panoply':
+        HOST = os.environ['PANOPLY_HOST']
+        PORT = os.environ['PANOPLY_PORT']
+        USER = os.environ['PANOPLY_USER']
+        PASSWORD = os.environ['PANOPLY_PASSWORD']
+        DATABASE = os.environ['PANOPLY_DB']
+    if db == 'medicion':
+        HOST = os.environ['MEDICION_HOST']
+        PORT = os.environ['MEDICION_PORT']
+        USER = os.environ['MEDICION_USER']
+        PASSWORD = os.environ['MEDICION_PASSWORD']
+        DATABASE = os.environ['MEDICION_DB']
 
+    conn = psycopg2.connect(
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=PASSWORD,
+        database=DATABASE
+    )
     return conn
 
 def download_data(conn, query):
     """
     Descarga datos de la base de datos según la consulta insertada
-
     Args:
         conn (connection): objeto que contiene la sesión de una
                            conexión a la base de datos
@@ -53,5 +55,19 @@ def download_data(conn, query):
     finally:
         conn.close()
 
+    return df
+
+def db_extraction(db, query):
+    """
+    Descarga base en un DataFrame
+    Args:
+        db (str): Base de datos
+        query (str): String donde se define el query a ejecutarse
+    Returns:
+        df (DataFrame): Tabla con los datos que elegimos
+    """
+    conn = db_connection(db)
+    df = download_data(conn, query)
+    df = save_memory(df)
 
     return df

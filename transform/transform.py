@@ -4,67 +4,16 @@
 Funciones que transforman y enriquecen los datos para entrenamiento
 """
 import math
-from datetime import datetime as dt
 import logging
 import numpy as np
+import pandas as pd
+import sys
+from datetime import datetime as dt
+from transform.replacenans import replace_nan
+sys.path.append('../')
+from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
-
-def divide_cats(DF, categorias, esp_cat=''):
-    """
-    Función que divide por categorías
-
-    Args:
-        DF (DataFrame): Dataframe con todos los datos
-        categorias(list): lista con categorias del Data Frame
-
-    Returns:
-        DF (DataFrame): con columnas con categorías separada
-        new_vars (list): lista con las variables añadidas
-    """
-    new_vars = []
-    for categoria in categorias:
-        try:
-            list_val_cats = set([str(value) for value in DF[categoria]]) #tomamos cada valor que tenga la categoría
-            for value in list_val_cats:
-                nueva_col = categoria + "_" + str(value)
-                DF[nueva_col] = 0
-                new_vars.append(nueva_col)
-                if esp_cat == 'hour':
-                    DF.loc[DF[categoria] == int(value), nueva_col] = 1
-                if esp_cat == 'day':
-                    DF.loc[DF[categoria] == int(value), nueva_col] = 1
-                if esp_cat == 'month':
-                    DF.loc[DF[categoria] == int(value), nueva_col] = 1
-                if esp_cat == 'weekday':
-                    DF.loc[DF[categoria] == int(value), nueva_col] = 1
-                if esp_cat == '':
-                    DF.loc[DF[categoria] == int(value), nueva_col] = 1
-
-        except Exception as e:
-            logging.error('error: {} en {}'.format(e,cat))
-
-    return DF, new_vars
-
-
-def nan_to_avg(DF):
-    """
-    Todos los valores faltantes los cambia por el promedio de la columna
-
-    Args:
-        DF (DataFrame): Dataframe con todos los datos
-    Returns:
-        DF (DataFrame): Dataframe con promedio en lugar de nan
-    """
-    nums = list(DF.select_dtypes(include=['int','float']).columns)
-    for col_vals in nums:
-        try:
-            avg = DF[col_vals][DF[col_vals].notnull()].mean()
-            if math.isnan(avg): avg = 0
-            DF.loc[DF[col_vals].isnull(), col_vals] = avg
-        except Exception as e:
-            logging.error(e)
-    return DF
 
 
 def drop_correlation(DF, var_list, response, treshold=0.1):
@@ -84,10 +33,11 @@ def drop_correlation(DF, var_list, response, treshold=0.1):
     dropped = []
     # Correlación con cada variable de la lista contra la variable dependiente
     for varname in var_list:
+        logging.info('Correlación de {}'.format(varname))
         correl = df[[varname, response]].corr()[response][0]
         if abs(correl) < abs(treshold):
             dropped.append([varname, correl]) #añadimos a la lista de las que eliminamos
-            df.drop(varname, 1) #eliminamos la columna que no cumple con correlación mínima
+            df = df.drop(varname, 1) #eliminamos la columna que no cumple con correlación mínima
 
     return df, dropped
 
@@ -107,7 +57,7 @@ def augment_numeric(DF, response):
 
     numericas = list(df.select_dtypes(include=['int','float']).columns)
 
-    df = nan_to_avg(df) #cambiar a función que predice valores
+    df = replace_nan(df, numericas) #cambiar a función que predice valores
 
     numericas = list(filter(lambda x: x not in response, numericas))
     new_vars = []
@@ -129,7 +79,7 @@ def augment_numeric(DF, response):
 
                 varname = 'sqrt(' + i + ')'
                 # Raíz cuadrada de la variable
-                print('tratamos de encontrar el cuadrado de {}'.format(varname))
+                logging.info('tratamos de encontrar el cuadrado de {}'.format(varname))
 
                 df[varname] = np.sqrt(df[i])
                 new_vars.append(varname)
@@ -166,51 +116,47 @@ def augment_date(DF, response):
     """
     df = DF.copy()
     fechas = list(df.select_dtypes(include=['datetime']).columns)
-
-    df = nan_to_avg(df)
     fechas = list(filter(lambda x: x not in response, fechas))
-
+    original_cols = list(df.columns)
     newvars = []
     unuseful = []
     acum_fechas = []
     new_vars = []
-
+    logging.info('Fechas: {}'.format(fechas))
     for i in fechas:
         varname = 'hora_' + i
-        new_vars.append(varname)
         # Hora de la fecha
         df[varname] = df[i].dt.hour
-        df,added = divide_cats(df, new_vars, esp_cat='hour') #se convierte en una categoría
-        new_vars = new_vars + added
+        new_vars.append(varname)
 
         varname = 'dia_' + i
         # Día de la fecha
         df[varname] = df[i].dt.day
-        df,added = divide_cats(df, new_vars, esp_cat='day') #se convierte en una categoría
-        new_vars = new_vars + added
+        new_vars.append(varname)
 
         varname = 'mes_' + i
         # Mes de la fecha
         df[varname] = df[i].dt.month
-        df,added = divide_cats(df, new_vars, esp_cat='month') #se convierte en una categoría
-        new_vars = new_vars + added
+        new_vars.append(varname)
 
         varname = 'dia_semana_' + i
         # Día de la semana
-        for ejemplo in df[i]: lista_de_dias_semana = ejemplo.weekday()
+        for ejemplo in df[i]:
+            lista_de_dias_semana = ejemplo.weekday()
         df[varname] = lista_de_dias_semana
-        df,added = divide_cats(df, new_vars, esp_cat='weekday') #se convierte en una categoría
-        new_vars = new_vars + added
-
+        new_vars.append(varname)
         acum_fechas.append(i)
-
         for j in [x for x in fechas if x not in acum_fechas]:
+            logging.info('Resta de fechas {} y {}'.format(i,j))
             # Por cada fecha vamos a tomar la diferencia entre esa fecha y las demás
             # Diferencia de fechas (en días)
             varname = i + '-' + j
             df.loc[(df[i].notnull()) & (df[j].notnull()), varname] = (df[i] - df[j]).dt.days
             new_vars.append(varname)
 
+    df = pd.get_dummies(df, columns=new_vars)
+    new_vars = [i for i in df.columns if i not in original_cols]
+    print(df.columns)
     return df, new_vars
 
 
@@ -236,8 +182,7 @@ def augment_categories(DF, response):
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
     for i in dummy_vars:
-        logging.info("*** haciendo magia con la variable {}***".format(i))
-        new_vars.append(i)
+        logging.info("*** Aumentando categoría {}***".format(i))
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
             varname = i + '*' + j
@@ -294,17 +239,12 @@ def augment_data(DF, response, treshold=0.1, categories=False):
     df, numeric = augment_numeric(df, response)
     df, fecha = augment_date(df, response)
     #suele tardarse mucho la transformación de categorías
+    numericas, categoricas, fechas = datatypes(df)
+    df = pd.get_dummies(df, columns=categoricas)
     if categories:
-        catego = df.select_dtypes(['category'])
         df, catego = augment_categories(df, response)
-
-
     aug_vars = numeric + fecha + catego
-
     df, dropped = drop_correlation(df, aug_vars, response, treshold)
-
     new_vals = list(filter(lambda x: x not in dropped, aug_vars))
-
-    num = list(df.select_dtypes(include=['int', 'float']).columns)
 
     return df, new_vals
