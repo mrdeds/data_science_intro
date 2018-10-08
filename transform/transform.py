@@ -26,8 +26,10 @@ def divide_cats(DF, categorias, esp_cat=''):
     for categoria in categorias:
         try:
             list_val_cats = set([str(value) for value in DF[categoria]]) #tomamos cada valor que tenga la categoría
+            logging.info("list_val_cats({}): {}".format(categoria, list_val_cats))
             for value in list_val_cats:
                 nueva_col = categoria + "_" + str(value)
+                logging.info("nueva_col: {} viene de categoría: {} y valor de la categoría:{}".format(nueva_col, categoria, value))
                 DF[nueva_col] = 0
                 new_vars.append(nueva_col)
                 if esp_cat == 'hour':
@@ -83,8 +85,10 @@ def drop_correlation(DF, var_list, response, treshold=0.1):
     df = DF.copy()
     dropped = []
     # Correlación con cada variable de la lista contra la variable dependiente
+    logging.info("*** Se checa correlación entre variables {} vs {}: ****".format(varname, response))
     for varname in var_list:
         correl = df[[varname, response]].corr()[response][0]
+        logging.info("Variable {} vs {}: {} (treshold: {})".format(varname, response, correl, treshold))
         if abs(correl) < abs(treshold):
             dropped.append([varname, correl]) #añadimos a la lista de las que eliminamos
             df.drop(varname, 1) #eliminamos la columna que no cumple con correlación mínima
@@ -176,8 +180,10 @@ def augment_date(DF, response):
     new_vars = []
 
     for i in fechas:
+        logging.info("new_vars = {}".format(new_vars))
         varname = 'hora_' + i
         new_vars.append(varname)
+        logging.info("new_vars = {}".format(new_vars))
         # Hora de la fecha
         df[varname] = df[i].dt.hour
         df,added = divide_cats(df, new_vars, esp_cat='hour') #se convierte en una categoría
@@ -214,7 +220,7 @@ def augment_date(DF, response):
     return df, new_vars
 
 
-def augment_categories(DF, response):
+def augment_categories(DF, response, exclude_metadata=True):
     """
     Se hacen transformaciones con operaciones lógicas entre variables categóricas
     dentro de un Dataframe
@@ -233,13 +239,20 @@ def augment_categories(DF, response):
         if set(df[i].unique()) == set([0, 1]):
             dummy_vars.append(i)
 
+    if exclude_metadata: [var for var in dummy_vars if not var.startswith('__')]
+
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
+    logging.info("*** Lista de variables a trabajar:{}***".format(dummy_vars))
+
     for i in dummy_vars:
-        logging.info("*** haciendo magia con la variable {}***".format(i))
+        logging.info("*** Haciendo Multiplicación de conectores lógicos\
+         (AND, OR, NAND, NOR, XOR & XNOR) con la variable {}***".format(i))
         new_vars.append(i)
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
+            logging.info("""*** Multiplicación de conectores lógicos
+             (AND, OR, NAND, NOR, XOR & XNOR) de {} con {}***""".format(i, j))
             varname = i + '*' + j
             df[varname] = df[i].astype(int) & df[j].astype(int)
             new_vars.append(varname)
@@ -288,7 +301,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
         new_vals (list): Lista de variables transformadas nuevas en el dataframe
     """
 
-    logging.info('***Haciendo Agregación de datos***')
+    logging.info('***Haciendo agregación de datos***')
     df = DF.copy()
     catego = []
     df, numeric = augment_numeric(df, response)
@@ -296,7 +309,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
     #suele tardarse mucho la transformación de categorías
     if categories:
         catego = df.select_dtypes(['category'])
-        df, catego = augment_categories(df, response)
+        df, catego = augment_categories(df,response, exclude_metadata=True)
 
 
     aug_vars = numeric + fecha + catego
