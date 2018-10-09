@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import pandas as pd
 import sys
+import multiprocessing as mp
 from datetime import datetime as dt
 from transform.replacenans import replace_nan
 sys.path.append('../')
@@ -15,6 +16,26 @@ from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
 
+def check_correlation(df_pair, treshold=0.1):
+    """
+    Checa la correlación de un par de columnas de un DataFrame
+
+    Args:
+        - df_pair (Datframe): Dataframe con la primer columna a comparar por la segunda
+
+    Returns:
+        - result (list) : lista con el valor de la variable y su correlación
+    """
+    varname = df_pair.columns[0]
+    response = df_pair.columns[1]
+    correlation = df_pair.corr()[response][0]
+
+    if abs(correlation) < abs(treshold):
+        result = varname
+    else:
+        result = ''
+
+    return result
 
 def drop_correlation(DF, var_list, response, treshold=0.1):
     """
@@ -29,17 +50,23 @@ def drop_correlation(DF, var_list, response, treshold=0.1):
                         la variable a predecir
         dropped (list): lista de variables desechadas de la lista por baja correlación
     """
+    logging.info("*** Checando correlación de variables nuevas contra {} ***".format(response))
     df = DF.copy()
-    dropped = []
     # Correlación con cada variable de la lista contra la variable dependiente
-    for varname in var_list:
-        logging.info('Correlación de {}'.format(varname))
-        correl = df[[varname, response]].corr()[response][0]
-        if abs(correl) < abs(treshold):
-            dropped.append([varname, correl]) #añadimos a la lista de las que eliminamos
-            df = df.drop(varname, 1) #eliminamos la columna que no cumple con correlación mínima
+    pair_columns = [[element, response] for element in var_list]
 
-    return df, dropped
+    df_pairs = [df[pair] for pair in pair_columns]
+
+    pool = mp.Pool(processes=4)
+
+    correlations_drop = pool.map(check_correlation, df_pairs)
+    pool.close()
+    pool.join()
+
+    correlations_drop = [varname for varname in correlations_drop if varname not in ('')]
+    df = df.drop(correlations_drop, 1) #eliminamos la columna que no cumple con correlación mínima
+
+    return df, correlations_drop
 
 
 def augment_numeric(DF, response):
@@ -142,7 +169,9 @@ def augment_date(DF, response):
         varname = 'dia_semana_' + i
         # Día de la semana
         for ejemplo in df[i]:
-            lista_de_dias_semana = ejemplo.weekday()
+            print('ejemplo de df[i]: {}, {}'.format(i, ejemplo))
+            lista_de_dias_semana = int(ejemplo.weekday())
+            print('lista de dias de la semana: {}'.format(lista_de_dias_semana))
         df[varname] = lista_de_dias_semana
         new_vars.append(varname)
         acum_fechas.append(i)
@@ -155,6 +184,8 @@ def augment_date(DF, response):
             new_vars.append(varname)
 
     df = pd.get_dummies(df, columns=new_vars)
+    logging.info('Vamos a eliminar estas fechas: {}'.format(fechas))
+    df.drop(fechas, 1)
     new_vars = [i for i in df.columns if i not in original_cols]
     print(df.columns)
     return df, new_vars
@@ -182,7 +213,7 @@ def augment_categories(DF, response):
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
     for i in dummy_vars:
-        logging.info("*** Aumentando categoría {}***".format(i))
+        logging.info("*** Aumentando categoría {} ***".format(i))
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
             varname = i + '*' + j
@@ -245,6 +276,6 @@ def augment_data(DF, response, treshold=0.1, categories=False):
         df, catego = augment_categories(df, response)
     aug_vars = numeric + fecha + catego
     df, dropped = drop_correlation(df, aug_vars, response, treshold)
-    new_vals = list(filter(lambda x: x not in dropped, aug_vars))
+    df.drop(df.select_dtypes(['datetime64[ns]']), inplace=True, axis=1)
 
-    return df, new_vals
+    return df, dropped

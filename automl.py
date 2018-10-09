@@ -1,4 +1,8 @@
-"""Ejemplo de como se puede utilizar el optimizador de búsqueda de arquitecturas"""
+#!/usr/bin/python3
+# coding: utf-8
+"""
+Ejemplo de como se puede utilizar el optimizador de búsqueda de arquitecturas
+"""
 import logging
 import json
 import numpy as np
@@ -98,6 +102,7 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, df, response):
                      (i + 1, generaciones))
 
         # Entrena y obtiene accuracy de cada red.
+        logging.info("*** Parámetros creados a partir de la selección de variables ***")
         entrena_redes(redes, df, response)
 
         # obtiene el accuracy promedio de esta generación.

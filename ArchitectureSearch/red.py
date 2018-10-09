@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+# coding: utf-8
 """
 Clase que define una red a ser evolucionada
 """
