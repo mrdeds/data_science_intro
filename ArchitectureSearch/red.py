@@ -7,7 +7,7 @@ import random
 import logging
 import sys
 sys.path.append('../')
-from entrena import entrena_red
+from ArchitectureSearch.entrena import entrena_red
 
 
 class Red():

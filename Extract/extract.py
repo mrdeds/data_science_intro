@@ -9,7 +9,7 @@ import os
 import pandas as pd
 from Extract.memory import save_memory
 
-def db_connection(db):
+def db_connection():
     """
     Método que hace la conexión a la base
     Args:
@@ -17,18 +17,12 @@ def db_connection(db):
     Returns:
         conn: conexión
     """
-    if db == 'panoply':
-        HOST = os.environ['PANOPLY_HOST']
-        PORT = os.environ['PANOPLY_PORT']
-        USER = os.environ['PANOPLY_USER']
-        PASSWORD = os.environ['PANOPLY_PASSWORD']
-        DATABASE = os.environ['PANOPLY_DB']
-    if db == 'medicion':
-        HOST = os.environ['MEDICION_HOST']
-        PORT = os.environ['MEDICION_PORT']
-        USER = os.environ['MEDICION_USER']
-        PASSWORD = os.environ['MEDICION_PASSWORD']
-        DATABASE = os.environ['MEDICION_DB']
+
+    HOST = os.environ['HOST']
+    PORT = os.environ['PORT']
+    USER = os.environ['USER']
+    PASSWORD = os.environ['PASSWORD']
+    DATABASE = os.environ['DB']
 
     conn = psycopg2.connect(
         host=HOST,
@@ -57,7 +51,7 @@ def download_data(conn, query):
 
     return df
 
-def db_extraction(db, query):
+def db_extraction(query):
     """
     Descarga base en un DataFrame
     Args:
@@ -66,7 +60,7 @@ def db_extraction(db, query):
     Returns:
         df (DataFrame): Tabla con los datos que elegimos
     """
-    conn = db_connection(db)
+    conn = db_connection()
     df = download_data(conn, query)
     df = save_memory(df)
 
