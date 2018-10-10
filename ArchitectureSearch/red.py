@@ -56,7 +56,7 @@ class Red():
     def imprime_red(self):
         """Imprime la representación de la red y su precisión."""
         logging.info(self.red)
-        if self.accuracy == 0.:
-            logging.info("Accuracy de la red: %.2f%%", self.accuracy * 100)
-        else:
-            logging.info("Este red parece que aún no ha sido entrenada")
+        #if self.accuracy == 0.:
+        logging.info("Accuracy de la red: %.2f%%", self.accuracy * 100)
+        #else:
+        #    logging.info("Este red parece que aún no ha sido entrenada")

@@ -47,7 +47,7 @@ def separa_datos(d_frame, response):
 
 
 def entrena_redes(poblacion, data_frame, response):
-    """Train each network.
+    """Entrena cada red.
 
     Args:
         poblacion (list): Lista con la poblacion de redes
@@ -62,6 +62,10 @@ def entrena_redes(poblacion, data_frame, response):
         red.entrena(datos_listos)
         pbar.update(1)
     pbar.close()
+    
+    logging.info("*** Parámetros creados a partir de la selección de variables ***")
+    for feature in data_frame.columns:
+        print(feature + '({})'.format(type(feature)))
 
 
 def get_average_accuracy(redes):
@@ -98,11 +102,9 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, data_frame, res
 
     # Evoluciona la generación
     for i in range(generaciones):
-        print_count = i+1
-        logging.info("***Haciendo generación %d de %d***", (print_count, generaciones))
+        logging.info("***Haciendo generación {} de {}***".format(i+1, generaciones))
 
         # Entrena y obtiene accuracy de cada red.
-        logging.info("*** Parámetros creados a partir de la selección de variables ***")
         entrena_redes(redes, data_frame, response)
 
         # obtiene el accuracy promedio de esta generación.
@@ -179,10 +181,12 @@ def main():
                         'adadelta', 'adamax', 'nadam'],
     }
 
-    logging.info("***Evolucionando %d generaciones, con población de  %d ***",
-                 (generaciones, tam_poblacion))
+    logging.info("***Evolucionando {} generaciones, con población de  {} ***\
+                 ".format(generaciones, tam_poblacion))
 
     genera_red(generaciones, tam_poblacion, nn_param_candidatos, data_frame, response)
+
+    logging.info('*** Features utilizados de la red: ***')
 
 
 if __name__ == '__main__':

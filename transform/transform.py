@@ -5,46 +5,40 @@ Funciones que transforman y enriquecen los datos para entrenamiento
 """
 import math
 import logging
-import sys
-import multiprocessing as mp
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
+import sys
+import multiprocessing as mp
+from datetime import datetime as dt
+from tqdm import tqdm
 from transform.replacenans import replace_nan
 sys.path.append('../')
 from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-def check_correlation(df_pair):
+def check_correlation(df_pair, treshold=0.1):
     """
     Checa la correlación de un par de columnas de un DataFrame
-
     Args:
         - df_pair (Datframe): Dataframe con la primer columna a comparar por la segunda
-
     Returns:
         - result (list) : lista con el valor de la variable y su correlación
     """
     varname = df_pair.columns[0]
     response = df_pair.columns[1]
-    print('varname: {}, response:{}'.format(varname, response))
     correlation = df_pair.corr()[response][0]
 
-    for element in correlation:
-        print("element: {}".format(element))
-
-    if abs(correlation) < abs(0.1):
+    if abs(correlation) < abs(treshold):
         result = varname
     else:
         result = ''
 
     return result
 
-def drop_correlation(DF, response):
+def drop_correlation(DF, var_list, response, treshold=0.1):
     """
     De una lista de variables quita las que tengan menor correlación del DataFrame
-
     Args:
         DF (Dataframe): Dataframe con los datos aumentados
         var_list (list): lista de variables a verificar correlación
@@ -54,16 +48,13 @@ def drop_correlation(DF, response):
                         la variable a predecir
         dropped (list): lista de variables desechadas de la lista por baja correlación
     """
-    logging.info("*** Checando correlación de variables nuevas con %s *** (puede tardar algunos minutos)", (response))
+    logging.info("*** Checando correlación de variables nuevas contra {} \
+                 (puede tardar algunos minutos)***".format(response))
     df = DF.copy()
     # Correlación con cada variable de la lista contra la variable dependiente
-    var_list = df.columns
     pair_columns = [[element, response] for element in var_list]
 
     df_pairs = [df[pair] for pair in pair_columns]
-    for pair in df_pairs:
-        if 'mes_createddate_10+hora_createddate_2' in pair.columns:
-            print(pair)
 
     pool = mp.Pool(processes=4)
 
@@ -71,16 +62,16 @@ def drop_correlation(DF, response):
     pool.close()
     pool.join()
 
-    correlations_drop = [varname for varname in correlations_drop if varname not in '']
-    df = df.drop(correlations_drop, 1) #eliminamos la columna que no cumple con correlación mínima
+    correlations_drop = [varname for varname in correlations_drop if varname not in ('')]
+    #eliminamos la columna que no cumple con correlación mínima
 
+    df = df.drop(correlations_drop, 1)
     return df, correlations_drop
 
 
 def augment_numeric(DF, response):
     """
     Crea una lista con transformación de variables numéricas del DataFrame
-
     Args:
         DF (Dataframe): Dataframe con los datos numéricos a aumentar
         response (list): nombre de las variables a predecir
@@ -90,7 +81,7 @@ def augment_numeric(DF, response):
     """
     df = DF.copy()
 
-    numericas = list(df.select_dtypes(include=['int', 'float']).columns)
+    numericas = list(df.select_dtypes(include=['int','float']).columns)
 
     df = replace_nan(df, numericas) #cambiar a función que predice valores
 
@@ -98,7 +89,7 @@ def augment_numeric(DF, response):
     new_vars = []
 
     for i in numericas:
-        if isinstance(i, (int,float)):
+        if isinstance(i, int) or isinstance(i, float):
             try:
                 new_vars.append(i)
 
@@ -133,7 +124,7 @@ def augment_numeric(DF, response):
                 df = df.replace(-np.inf, -1000)
                 df = df.replace(np.inf, 1000)
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
 
     return df, new_vars
 
@@ -141,7 +132,6 @@ def augment_numeric(DF, response):
 def augment_date(DF, response):
     """
     Crea una lista con transformación de variables de fechas del DataFrame
-
     Args:
         DF (Datframe): Datframe con los datos de fecha a aumentar
         response (list): nombre de las variables dependiente a predecir
@@ -153,9 +143,11 @@ def augment_date(DF, response):
     fechas = list(df.select_dtypes(include=['datetime']).columns)
     fechas = list(filter(lambda x: x not in response, fechas))
     original_cols = list(df.columns)
+    newvars = []
+    unuseful = []
     acum_fechas = []
     new_vars = []
-    logging.info('Campos de fechas detectados: {}'.format(fechas))
+    logging.info('Variables de tipo fecha encontradas: {}'.format(fechas))
     for i in fechas:
         varname = 'hora_' + i
         # Hora de la fecha
@@ -174,13 +166,13 @@ def augment_date(DF, response):
 
         varname = 'dia_semana_' + i
         # Día de la semana
-        for ejemplo in df[i]: # TODO: días de la semana se añadan a categorías
+        for ejemplo in df[i]: # TODO: Dias de la semana tomados en cuenta
             lista_de_dias_semana = int(ejemplo.weekday())
         df[varname] = lista_de_dias_semana
         new_vars.append(varname)
         acum_fechas.append(i)
         for j in [x for x in fechas if x not in acum_fechas]:
-            logging.info('Resta de fechas {} y {}'.format(i, j))
+            logging.info('Resta de fechas {} y {}'.format(i,j))
             # Por cada fecha vamos a tomar la diferencia entre esa fecha y las demás
             # Diferencia de fechas (en días)
             varname = i + '-' + j
@@ -188,9 +180,9 @@ def augment_date(DF, response):
             new_vars.append(varname)
 
     df = pd.get_dummies(df, columns=new_vars)
-    logging.info('Vamos a eliminar estas fechas depués de enriquecerlas: {}'.format(fechas))
+    logging.info('Vamos a eliminar estas fechas después de enriquecerlas: {}'.format(fechas))
     df.drop(fechas, 1)
-    new_vars = [i for i in df.columns if i not in (original_cols, fechas)]
+    new_vars = [i for i in df.columns if i not in original_cols]
     return df, new_vars
 
 
@@ -198,11 +190,9 @@ def augment_categories(DF, response):
     """
     Se hacen transformaciones con operaciones lógicas entre variables categóricas
     dentro de un Dataframe
-
     Args:
         DF (DataFrame): Dataframe de donde se quieren aumentar las categorías
         response(list): lista con nombres de las variables dependientes a predecir
-
     Response:
         df (Dataframe): DataFrame con las variables categóricas aumentadas
         new_vars(list): lista con las variables categóricas candidatas aumentadas
@@ -216,10 +206,9 @@ def augment_categories(DF, response):
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
 
-    logging.info("*** Aumentando {} variables categóricas ***".format(len(dummy_vars)))
+    logging.info("*** Aumentando {} categorías ***".format(len(dummy_vars)))
     pbar = tqdm(total=len(dummy_vars))
-    for i in dummy_vars: # TODO: hacer este proceso en paralelo, si es posible
-        pbar.update(1)
+    for i in dummy_vars:
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
             varname = i + '*' + j
@@ -245,27 +234,26 @@ def augment_categories(DF, response):
             varname = 'xnor(' + i + ',' + j + ')'
             new_vars.append(varname)
             df[varname] = (df[i].astype(int) & df[j].astype(int)) | (~(df[i].astype(int)) & ~(df[j].astype(int)))
-
-    pbar.close()
-
-    logging.info("*** Verificando tipo de datos de las {} variables candidatas***".format(len(new_vars)))
-    pbar = tqdm(total=len(new_vars))
-    #Algunas operaciones se quedan en valores lógicos. Hay que pasarlas a binarias
-    for var in new_vars:
         pbar.update(1)
+    pbar.close()
+    #Algunas operaciones se quedan en valores lógicos. Hay que pasarlas a binarias
+
+    logging.info("*** Verificando datos de {} nuevas variables ***".format(len(new_vars)))
+    pbar = tqdm(total=len(new_vars))
+    for var in new_vars: # TODO: hacer este chequeo cada que se añade una variable
         df.loc[df[var] == True, var] = 1
         df.loc[df[var] == False, var] = 0
+        pbar.update(1)
     pbar.close()
 
     return df, new_vars
 
 
-def augment_data(DF, response, categories=False):
+def augment_data(DF, response, treshold=0.1, categories=False):
     """
     Prueba ciertas transformaciones numéricas, de fecha y categóricas.
     Verifica si la correlación es buena, a partir de un threshold,
     para agregarlas al dataframe resultante
-
     Args:
         DF (DataFrame): DataFrame de tus datos
         response (str): Variable dependiente (la debe contener tu base)
@@ -276,7 +264,7 @@ def augment_data(DF, response, categories=False):
         new_vals (list): Lista de variables transformadas nuevas en el dataframe
     """
 
-    logging.info('***Haciendo agregación de datos***')
+    logging.info('***Haciendo Agregación de datos***')
     df = DF.copy()
     catego = []
     df, numeric = augment_numeric(df, response)
@@ -286,7 +274,8 @@ def augment_data(DF, response, categories=False):
     df = pd.get_dummies(df, columns=categoricas)
     if categories:
         df, catego = augment_categories(df, response)
-
-    df, dropped = drop_correlation(df, response)
+    aug_vars = numeric + fecha + catego
+    df, dropped = drop_correlation(df, aug_vars, response, treshold)
+    df.drop(df.select_dtypes(['datetime64[ns]']), inplace=True, axis=1)
 
     return df, dropped
