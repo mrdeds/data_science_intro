@@ -150,6 +150,7 @@ def augment_date(DF, response):
     new_vars = []
     logging.info('Variables de tipo fecha encontradas: {}'.format(fechas))
     for i in fechas:
+        logging.info("new_vars = {}".format(new_vars))
         varname = 'hora_' + i
         # Hora de la fecha
         df[varname] = df[i].dt.hour
@@ -187,7 +188,7 @@ def augment_date(DF, response):
     return df, new_vars
 
 
-def augment_categories(DF, response):
+def augment_categories(DF, response, exclude_metadata=True):
     """
     Se hacen transformaciones con operaciones lógicas entre variables categóricas
     dentro de un Dataframe
@@ -204,6 +205,8 @@ def augment_categories(DF, response):
         if set(df[i].unique()) == set([0, 1]):
             dummy_vars.append(i)
 
+    if exclude_metadata: [var for var in dummy_vars if not var.startswith('__')]
+
     dummy_vars = list(filter(lambda x: x not in response, dummy_vars))
     new_vars = []
 
@@ -212,6 +215,8 @@ def augment_categories(DF, response):
     for i in dummy_vars:
         for j in [x for x in dummy_vars if x not in new_vars]:
             # Multiplicación de conectores lógicos (AND, OR, NAND, NOR, XOR & XNOR)
+            logging.info("""*** Multiplicación de conectores lógicos
+             (AND, OR, NAND, NOR, XOR & XNOR) de {} con {}***""".format(i, j))
             varname = i + '*' + j
             df[varname] = df[i].astype(int) & df[j].astype(int)
             new_vars.append(varname)
@@ -265,7 +270,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
         new_vals (list): Lista de variables transformadas nuevas en el dataframe
     """
 
-    logging.info('***Haciendo Agregación de datos***')
+    logging.info('***Haciendo agregación de datos***')
     df = DF.copy()
     catego = []
     df, numeric = augment_numeric(df, response)
