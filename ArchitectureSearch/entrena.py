@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+# coding: utf-8
 """
 Funciones utilizadas para entrenar una Red
 """
@@ -12,7 +14,6 @@ from DataCleaning.cleaning import clean_data
 # si después de 5 epochs no mejora se detiene el entrenamiento de ese modelo
 EARLY_STOPPER = EarlyStopping(patience=5)
 
-
 def compila_modelo(red, outputs, inputs):
     """Compila un modelo secuencial.
 
@@ -25,7 +26,6 @@ def compila_modelo(red, outputs, inputs):
 
     """
     # Obtenemos los parámetros de nuestra red.
-    #print("Propiedades de una red: {}".format(red))
     num_capas = red['num_capas']
     num_neurons = red['num_neurons']
     activacion = red['activacion']
@@ -74,7 +74,6 @@ def entrena_red(red, datos_listos):
     outputs = 1
     model = compila_modelo(red, outputs, inputs)
 
-    print(x_train[0])
     model.fit(x_train, y_train,
               batch_size=128, #esto también puede ser un parámetro a optimizar
               epochs=10000, # usamos EarlyStopping así que no es el límite real

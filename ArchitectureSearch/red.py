@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+# coding: utf-8
 """
 Clase que define una red a ser evolucionada
 """
@@ -5,7 +7,7 @@ import random
 import logging
 import sys
 sys.path.append('../')
-from entrena import entrena_red
+from ArchitectureSearch.entrena import entrena_red
 
 
 class Red():
@@ -54,7 +56,7 @@ class Red():
     def imprime_red(self):
         """Imprime la representación de la red y su precisión."""
         logging.info(self.red)
-        if self.accuracy == 0.:
-            logging.info("Accuracy de la red: %.2f%%", self.accuracy * 100)
-        else:
-            logging.info("Este red parece que aún no ha sido entrenada")
+        #if self.accuracy == 0.:
+        logging.info("Accuracy de la red: %.2f%%", self.accuracy * 100)
+        #else:
+        #    logging.info("Este red parece que aún no ha sido entrenada")

@@ -1,10 +1,14 @@
+#!/usr/bin/python3
+# coding: utf-8
 """
 Clase que contiene los algoritmos genéticos para optimizar las redes candidatas.
 """
+import sys
 import random
 from operator import add
 from functools import reduce
-from red import Red
+sys.path.append('../')
+from ArchitectureSearch.red import Red
 
 class Optimizador():
     """

@@ -27,6 +27,7 @@ def nan_to_mean(df):
             data.loc[data[i].isnull(), i] = avg
         except Exception as e:
             pass
+
     return data
 
 def replace_nan(data, numeric):
@@ -40,6 +41,7 @@ def replace_nan(data, numeric):
     Returns:
         df (DataFrame): Datos con NaNs reemplazados
     """
+    non_numeric = [i for i in data.columns if i not in numeric]
     df = data[numeric].copy()
     df['intercept'] = 1
     df_rep = df.copy()
@@ -65,5 +67,6 @@ def replace_nan(data, numeric):
     rep_columns = [i for i in replaced.columns if i.endswith('_rep')]
     for i in rep_columns:
         df[i] = replaced[i]
-
+    df = pd.concat([df, data[non_numeric]], axis=1)
+    
     return df
