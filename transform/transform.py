@@ -17,7 +17,7 @@ from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-def check_correlation(df_pair, treshold=0.1):
+def check_correlation(df_pair, treshold=0.5):
     """
     Checa la correlación de un par de columnas de un DataFrame
     Args:
@@ -64,7 +64,8 @@ def drop_correlation(DF, var_list, response, treshold=0.1):
 
     correlations_drop = [varname for varname in correlations_drop if varname not in ('')]
     #eliminamos la columna que no cumple con correlación mínima
-
+    logging.info("eliminamos ({}/{}) variables que no tienen buena correlación \
+                 con {}".format(len(correlations_drop), len(df.columns), response))
     df = df.drop(correlations_drop, 1)
     return df, correlations_drop
 

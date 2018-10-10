@@ -62,10 +62,6 @@ def entrena_redes(poblacion, data_frame, response):
         red.entrena(datos_listos)
         pbar.update(1)
     pbar.close()
-    
-    logging.info("*** Parámetros creados a partir de la selección de variables ***")
-    for feature in data_frame.columns:
-        print(feature + '({})'.format(type(feature)))
 
 
 def get_average_accuracy(redes):
@@ -121,7 +117,9 @@ def genera_red(generaciones, tam_poblacion, nn_param_candidatos, data_frame, res
 
     # Se ordena nuestra última iteración de redes por accuracy
     redes = sorted(redes, key=lambda x: x.accuracy, reverse=True)
-
+    logging.info("*** Parámetros creados a partir de la selección de variables ***")
+    for feature in data_frame.drop(response, 1).columns:
+        print(feature + '({})'.format(type(feature)))
     # Se impirmen el top 5 de las redes finales.
     imprime_redes(redes[:5])
 
