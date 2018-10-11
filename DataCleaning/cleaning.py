@@ -105,7 +105,8 @@ def datatypes(df):
     # variables categoricas
     categoricas = list(df.select_dtypes(include=['category', 'object']).columns)
     # variables temporales
-    fechas = list(df.select_dtypes(include=['datetime']).columns)
+    fechas = list(df.select_dtypes(include=['datetime',
+                                            'datetime64[ns]']).columns)
 
     return numericas, categoricas, fechas
 
@@ -118,12 +119,16 @@ def rename_duplicates(dfd):
         df (DataFrame): Tabla con todos los nombres de las columnas diferentes
     """
     df = dfd.copy()
-    cols=pd.Series(df.columns)
-    for dup in df.columns.get_duplicates():
-        cols[df.columns.get_loc(dup)] = \
-        [dup + '.' + str(d_idx) if d_idx != 0 else dup for d_idx in range(df.columns.get_loc(dup).sum())]
-    cols = list(cols.values)
-    df.columns = cols
+    df_columns = df.columns
+    new_columns = []
+    for item in df_columns:
+        counter = 0
+        newitem = item
+        while newitem in new_columns:
+            counter += 1
+            newitem = "{}_{}".format(item, counter)
+        new_columns.append(newitem)
+    df.columns = new_columns
 
     return df
 

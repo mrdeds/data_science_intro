@@ -12,8 +12,6 @@ from Extract.memory import save_memory
 def db_connection():
     """
     Método que hace la conexión a la base
-    Args:
-        db (str): 'panoply', 'medicion', 'llamadas'
     Returns:
         conn: conexión
     """
@@ -55,7 +53,6 @@ def db_extraction(query):
     """
     Descarga base en un DataFrame
     Args:
-        db (str): Base de datos
         query (str): String donde se define el query a ejecutarse
     Returns:
         df (DataFrame): Tabla con los datos que elegimos
