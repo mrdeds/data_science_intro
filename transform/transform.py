@@ -17,7 +17,7 @@ from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-def check_correlation(df_pair, treshold=0.5):
+def check_correlation(df_pair, threshold=0.5):
     """
     Checa la correlación de un par de columnas de un DataFrame
     Args:
@@ -28,14 +28,14 @@ def check_correlation(df_pair, treshold=0.5):
     varname = df_pair.columns[0]
     response = df_pair.columns[1]
     correlation = df_pair.corr()[response][0]
-    if abs(correlation) < abs(treshold) or math.isnan(correlation):
+    if abs(correlation) < abs(threshold) or math.isnan(correlation):
         result = varname
     else:
         result = ''
 
     return result
 
-def drop_correlation(DF, var_list, response, thershold=0.1):
+def drop_correlation(DF, var_list, response, threshold=0.1):
     """
     De una lista de variables quita las que tengan menor correlación del DataFrame
     Args:

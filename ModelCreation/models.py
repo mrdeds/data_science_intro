@@ -6,6 +6,7 @@ tipo de problema e implementación de modelos de regresión.
 
 import statsmodels.api as sm
 import numpy as np
+import logging
 from sklearn.model_selection import train_test_split
 from tpot import TPOTClassifier, TPOTRegressor
 
@@ -29,10 +30,10 @@ def train_test(Data, response, train_size=0.75, time_series=False):
     X = Data1.drop(response, 1)
     y = Data1[response]
 
-    print('X columns')
-    print(list(X.columns))
-    print('Response')
-    print(response)
+    logging.info('X columns')
+    logging.info(list(X.columns))
+    logging.info('Response')
+    logging.info(response)
 
     if time_series:
         tscv = TimeSeriesSplit(n_splits=2)
