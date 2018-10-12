@@ -10,12 +10,12 @@ import logging
 from sklearn.model_selection import train_test_split
 from tpot import TPOTClassifier, TPOTRegressor
 
-def train_test(Data, response, train_size=0.75, time_series=False):
+def train_test(df, response, train_size=0.75, time_series=False):
     """
     Regresa train y test sets
 
     Args:
-        Data (DataFrame): Datos listos para el modelo
+        df (DataFrame): Datos listos para el modelo
         response (str): Variable respuesta
         train_size (float): % Train Size
         time_series (boolean): Si es serie de tiempo o no
@@ -26,9 +26,9 @@ def train_test(Data, response, train_size=0.75, time_series=False):
         y_test (Array): conjunto de datos de prueba (dep)
     """
 
-    Data1 = Data.copy()
-    X = Data1.drop(response, 1)
-    y = Data1[response]
+    data = df.copy()
+    X = data.drop(response, 1)
+    y = data[response]
 
     logging.info('X columns')
     logging.info(list(X.columns))
