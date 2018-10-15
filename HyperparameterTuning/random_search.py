@@ -6,6 +6,8 @@ Funciones para optimización de parámetros con random search en redes neuronale
 import random
 import math
 import pandas as pd
+import numpy as np
+import logging
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense
@@ -32,8 +34,8 @@ def model_precision(y_test, predictions, lim, disp=False):
                      (tp*tn-fp*fn)/(math.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn)))
 
     """
-    y_test.shape = [y_test.shape[0],1]
-    predictions.shape = [predictions.shape[0],1]
+    y_test = y_test.reshape([y_test.shape[0], 1])
+    predictions = predictions.reshape([predictions.shape[0], 1])
 
     test = np.concatenate((y_test,predictions),axis=1)
 
@@ -82,7 +84,7 @@ def NN(X_train, y_train, neurons, activations, initializer,
     Returns:
         model (modelo): Modelo de Red Neuronal
     """
-    dim = len(X_train[1])
+    dim = X_train.shape[1]
     model = Sequential()
     model.add(Dense(neurons[0],
                     input_dim=dim,
@@ -94,7 +96,9 @@ def NN(X_train, y_train, neurons, activations, initializer,
                         kernel_initializer=initializer,
                         bias_initializer='zeros',
                         activation=activations[i]))
-    model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
+    model.compile(loss=loss,
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
 
     if checkpoint != False:
         filepath = "weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
@@ -136,19 +140,19 @@ def random_nets(X_train, y_train, it, epcs):
                     'lecun_normal']
     optimizers = ['Adam', 'SGD', 'RMSprop',
                   'Adagrad', 'Adadelta', 'Adamax',
-                  'Nadam', 'TFOptimizer']
+                  'Nadam']
     batches = [64, 128, 256, 512, 1024, 2048]
     modelos = []
     parameters = pd.DataFrame()
     for i in range(it):
-        try:
-            k = round(abs(np.random.randn() * 10))
+        k = round(abs(np.random.randn() * 10))
+        if k != 0:
             neurons = [X_train.shape[1]]
-            neurons2 = [round(abs(np.random.randn() * 100)) for i in range(k)]
+            neurons2 = [round(abs(np.random.randn() * 100)) for j in range(k)]
             neurons.extend(neurons2)
             neurons.append(1)
             activations = [random.choice(activation_functions)\
-                           for i in range(k+1)]
+                           for j in range(k+1)]
             activations.append('sigmoid')
             initializer = random.choice(initializers)
             optimizer = random.choice(optimizers)
@@ -176,12 +180,9 @@ def random_nets(X_train, y_train, it, epcs):
                               batch=batch,
                               loss=loss))
 
-        except Exception as e:
-            logging.error(e)
-
     return modelos
 
-def random_search(y_test, X_test, modelos, metric, lim=0.5):
+def random_search(X_test, y_test, modelos, metric, lim=0.5):
     """
     Random search en parámetros de una red neuronal de clasificación
 
@@ -197,6 +198,7 @@ def random_search(y_test, X_test, modelos, metric, lim=0.5):
     """
     plt.figure(figsize=(12, 12))
     max_met = 0
+    best_model = modelos[0]
     for i in modelos:
 
         predictions_test = i.predict(X_test)
@@ -245,6 +247,6 @@ def best_nn(X_train, y_train, X_test, y_test, it, epcs, metric):
         bm (modelo): Mejor red seleccionada
     """
     modelos = random_nets(X_train, y_train, it=it, epcs=epcs)
-    bm = random_search(y_test, X_test, modelos, metric=metric)
+    bm = random_search(X_test, y_test, modelos, metric=metric)
 
     return bm

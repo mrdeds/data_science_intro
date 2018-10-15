@@ -113,24 +113,25 @@ def importance_corr(df, response, corr=0.1, fif=0.01, vif=False):
     y = df[response].values
     etc = ExtraTreesClassifier()
     etc.fit(X, y)
-    cm = pd.DataFrame(df.corr()[response])
-    cm = cm.reset_index()
-    cm.columns = ['feature', 'correlation']
-    cm = cm[cm['feature'] != response]
-    f = pd.DataFrame(df.columns, columns=['feature'])
-    f = f[f['feature'] != response]
-    f['importance'] = etc.feature_importances_
-    fi_cm = pd.merge(f, cm, on='feature')
+    correl = pd.DataFrame(df.corr()[response])
+    correl = correl.reset_index()
+    correl.columns = ['feature', 'correlation']
+    correl = correl[correl['feature'] != response]
+    feature_importance = pd.DataFrame(df.columns, columns=['feature'])
+    feature_importance = feature_importance[feature_importance['feature'] \
+                                                              != response]
+    feature_importance['importance'] = etc.feature_importances_
+    importance_correl = pd.merge(feature_importance, correl, on='feature')
     if vif != False:
         VF = get_vif(df)
-        fi_cm = pd.merge(fi_cm, VF, on= 'feature')
+        importance_correl = pd.merge(importance_correl, VF, on= 'feature')
 
-    leakage = fi_cm[(abs(fi_cm['correlation']) >= 0.5) | \
-                    (fi_cm['importance'] >= 0.01)]
-    best_features = fi_cm[(abs(fi_cm['correlation']) >= corr) | \
-                          (fi_cm['importance'] >= fif)]
-    logging.info('Hay ' + str(len(leakage)) + 'variables que pueden \
-                                            presentar data leakage\n')
+    leakage = importance_correl[(abs(importance_correl['correlation']) >= 0.5) \
+                              | (abs(importance_correl['importance']) >= 0.01)]
+    best_features = importance_correl[(abs(importance_correl['correlation']) \
+                     >= corr) | (abs(importance_correl['importance']) >= fif)]
+    logging.info('Hay ' + str(len(leakage)) + \
+                 ' variables que pueden presentar data leakage\n')
     for i in leakage['feature'].values:
         logging.info('Variable: ' + i)
         logging.info('puede presentar leakage, desea eliminarla? (si o no)')

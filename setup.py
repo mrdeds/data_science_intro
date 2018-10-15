@@ -3,7 +3,7 @@ import setuptools
 setuptools.setup(
     name="AutoML",
     version="0.1.0",
-            url="https://github.com/resuelve/lead-score/utils",
+            url="https://github.com/resuelve/automl",
     description="Utilities for data science teams.",
     long_description=open('README.md').read(),
     packages=setuptools.find_packages(),

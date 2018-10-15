@@ -17,28 +17,29 @@ from DataCleaning.cleaning import datatypes
 
 logging.getLogger().setLevel(logging.DEBUG)
 
-def check_correlation(df_pair, treshold=0.5):
+def check_correlation(df_pair, threshold=0.5):
     """
     Checa la correlación de un par de columnas de un DataFrame
     Args:
-        - df_pair (Datframe): Dataframe con la primer columna a comparar por la segunda
+        - df_pair (Datframe): Dataframe con la primer columna a comparar por la
+                              segunda
     Returns:
         - result (list) : lista con el valor de la variable y su correlación
     """
     varname = df_pair.columns[0]
     response = df_pair.columns[1]
     correlation = df_pair.corr()[response][0]
-
-    if abs(correlation) < abs(treshold):
+    if abs(correlation) < abs(threshold) or math.isnan(correlation):
         result = varname
     else:
         result = ''
 
     return result
 
-def drop_correlation(DF, var_list, response, treshold=0.1):
+def drop_correlation(DF, var_list, response, threshold=0.1):
     """
-    De una lista de variables quita las que tengan menor correlación del DataFrame
+    De una lista de variables quita las que tengan menor correlación del
+    DataFrame
     Args:
         DF (Dataframe): Dataframe con los datos aumentados
         var_list (list): lista de variables a verificar correlación
@@ -46,7 +47,8 @@ def drop_correlation(DF, var_list, response, treshold=0.1):
     Response:
         DF (Datframe): Dataframe con variables que tienen mayor relación con
                         la variable a predecir
-        dropped (list): lista de variables desechadas de la lista por baja correlación
+        dropped (list): lista de variables desechadas de la lista por baja
+                        correlación
     """
     logging.info("*** Checando correlación de variables nuevas contra {} \
                  (puede tardar algunos minutos)***".format(response))
@@ -88,44 +90,27 @@ def augment_numeric(DF, response):
 
     numericas = list(filter(lambda x: x not in response, numericas))
     new_vars = []
-
     for i in numericas:
-        if isinstance(i, int) or isinstance(i, float):
-            try:
-                new_vars.append(i)
-
-                varname = i + '^' + str(2)
-                # Variable al cuadrado
-                df[varname] = df[i]**2
-                new_vars.append(varname)
-
-                varname = i + '^' + str(3)
-                # Variable al cubo
-                df[varname] = df[i]**3
-                new_vars.append(varname)
-
-                varname = 'sqrt(' + i + ')'
-                # Raíz cuadrada de la variable
-                logging.info('tratamos de encontrar el cuadrado de {}'.format(varname))
-
-                df[varname] = np.sqrt(df[i])
-                new_vars.append(varname)
-
-                varname = '1/' + i
-                # Inverso de la variable
-                df[varname] = 1 / df[i]
-                new_vars.append(varname)
-
-                varname = 'log(' + i + ')'
-                # Logaritmo de la variable
-                df[varname] = df[i].apply(np.log)
-                new_vars.append(varname)
-
-                #si tenemos logaritmos que dan infinitos
-                df = df.replace(-np.inf, -1000)
-                df = df.replace(np.inf, 1000)
-            except Exception as e:
-                logger.error(e)
+        try:
+            varname = i + '^' + str(2)
+            df[varname] = df[i]**2
+            new_vars.append(varname)
+            varname = i + '^' + str(3)
+            df[varname] = df[i]**3
+            new_vars.append(varname)
+            varname = 'sqrt(' + i + ')'
+            df[varname] = np.sqrt(df[i])
+            new_vars.append(varname)
+            varname = '1/' + i
+            df[varname] = 1 / df[i]
+            new_vars.append(varname)
+            varname = 'log(' + i + ')'
+            df[varname] = df[i].apply(np.log)
+            new_vars.append(varname)
+            df = df.replace(-np.inf, -1000)
+            df = df.replace(np.inf, 1000)
+        except Exception as e:
+            logging.error(e)
 
     return df, new_vars
 
@@ -141,48 +126,41 @@ def augment_date(DF, response):
         new_vars(list): lista con las variables aumentadas candidatas
     """
     df = DF.copy()
-    fechas = list(df.select_dtypes(include=['datetime']).columns)
+    fechas = list(df.select_dtypes(include=['datetime',
+                                            'datetime64[ns]']).columns)
     fechas = list(filter(lambda x: x not in response, fechas))
     original_cols = list(df.columns)
     newvars = []
     unuseful = []
     acum_fechas = []
     new_vars = []
-    logging.info('Variables de tipo fecha encontradas: {}'.format(fechas))
     for i in fechas:
-        logging.info("new_vars = {}".format(new_vars))
         varname = 'hora_' + i
-        # Hora de la fecha
         df[varname] = df[i].dt.hour
         new_vars.append(varname)
-
         varname = 'dia_' + i
-        # Día de la fecha
         df[varname] = df[i].dt.day
         new_vars.append(varname)
-
         varname = 'mes_' + i
-        # Mes de la fecha
         df[varname] = df[i].dt.month
         new_vars.append(varname)
-
         varname = 'dia_semana_' + i
-        # Día de la semana
-        for ejemplo in df[i]: # TODO: Dias de la semana tomados en cuenta
-            lista_de_dias_semana = int(ejemplo.weekday())
+        lista_de_dias_semana = []
+        for ejemplo in df[i]:
+            if math.isnan(ejemplo.weekday()):
+                lista_de_dias_semana.append(0)
+            else:
+                lista_de_dias_semana.append(int(ejemplo.weekday()))
         df[varname] = lista_de_dias_semana
         new_vars.append(varname)
         acum_fechas.append(i)
         for j in [x for x in fechas if x not in acum_fechas]:
-            logging.info('Resta de fechas {} y {}'.format(i,j))
-            # Por cada fecha vamos a tomar la diferencia entre esa fecha y las demás
             # Diferencia de fechas (en días)
             varname = i + '-' + j
             df.loc[(df[i].notnull()) & (df[j].notnull()), varname] = (df[i] - df[j]).dt.days
             new_vars.append(varname)
 
     df = pd.get_dummies(df, columns=new_vars)
-    logging.info('Vamos a eliminar estas fechas después de enriquecerlas: {}'.format(fechas))
     df.drop(fechas, 1)
     new_vars = [i for i in df.columns if i not in original_cols]
     return df, new_vars
@@ -235,11 +213,13 @@ def augment_categories(DF, response, exclude_metadata=True):
 
             varname = 'xor(' + i + ',' + j + ')'
             new_vars.append(varname)
-            df[varname] = (df[i].astype(int) & ~(df[j].astype(int))) | (~(df[i].astype(int)) & df[j].astype(int))
+            df[varname] = (df[i].astype(int) & ~(df[j].astype(int))) | \
+                          (~(df[i].astype(int)) & df[j].astype(int))
 
             varname = 'xnor(' + i + ',' + j + ')'
             new_vars.append(varname)
-            df[varname] = (df[i].astype(int) & df[j].astype(int)) | (~(df[i].astype(int)) & ~(df[j].astype(int)))
+            df[varname] = (df[i].astype(int) & df[j].astype(int)) | \
+                          (~(df[i].astype(int)) & ~(df[j].astype(int)))
         pbar.update(1)
     pbar.close()
     #Algunas operaciones se quedan en valores lógicos. Hay que pasarlas a binarias
@@ -281,7 +261,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
     if categories:
         df, catego = augment_categories(df, response)
     aug_vars = numeric + fecha + catego
+    df.drop(fechas, inplace=True, axis=1)
     df, dropped = drop_correlation(df, aug_vars, response, treshold)
-    df.drop(df.select_dtypes(['datetime64[ns]']), inplace=True, axis=1)
 
     return df, dropped
