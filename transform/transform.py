@@ -112,6 +112,8 @@ def augment_numeric(DF, response):
         except Exception as e:
             logging.error(e)
 
+    df.drop(columns='intercept', axis=1, inplace=True)
+
     return df, new_vars
 
 
