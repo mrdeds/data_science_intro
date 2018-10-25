@@ -147,38 +147,43 @@ def random_nets(X_train, y_train, it, epcs):
     for i in range(it):
         k = round(abs(np.random.randn() * 10))
         if k != 0:
-            neurons = [X_train.shape[1]]
-            neurons2 = [round(abs(np.random.randn() * 100)) for j in range(k)]
-            neurons.extend(neurons2)
-            neurons.append(1)
-            activations = [random.choice(activation_functions)\
-                           for j in range(k+1)]
-            activations.append('sigmoid')
-            initializer = random.choice(initializers)
-            optimizer = random.choice(optimizers)
-            batch = random.choice(batches)
-            loss = 'binary_crossentropy'
-            rows = np.zeros((len(neurons), 5))
-            params = pd.DataFrame(rows, columns=['Neurons',
-                                                 'Activation',
-                                                 'Initializer',
-                                                 'Optimizer',
-                                                 'Loss'])
-            params['Neurons'] = neurons
-            params['Activation'] = activations
-            params['Initializer'] = initializer
-            params['Optimizer'] = optimizer
-            params['Loss'] = loss
-            display(params)
-            modelos.append(NN(X_train,
-                              y_train,
-                              neurons,
-                              activations,
-                              initializer,
-                              optimizer,
-                              epochs=epcs,
-                              batch=batch,
-                              loss=loss))
+            try:
+                neurons = [X_train.shape[1]]
+                neurons2 = [round(abs(np.random.randn() * 100)) for j in range(k)]
+                neurons.extend(neurons2)
+                neurons.append(1)
+                activations = [random.choice(activation_functions)\
+                               for j in range(k+1)]
+                activations.append('sigmoid')
+                initializer = random.choice(initializers)
+                optimizer = random.choice(optimizers)
+                batch = random.choice(batches)
+                loss = 'binary_crossentropy'
+                rows = np.zeros((len(neurons), 6))
+                params = pd.DataFrame(rows, columns=['Neurons',
+                                                     'Activation',
+                                                     'Batch Size',
+                                                     'Initializer',
+                                                     'Optimizer',
+                                                     'Loss'])
+                params['Neurons'] = neurons
+                params['Activation'] = activations
+                params['Batch Size'] = batch
+                params['Initializer'] = initializer
+                params['Optimizer'] = optimizer
+                params['Loss'] = loss
+                display(params)
+                modelos.append(NN(X_train,
+                                  y_train,
+                                  neurons,
+                                  activations,
+                                  initializer,
+                                  optimizer,
+                                  epochs=epcs,
+                                  batch=batch,
+                                  loss=loss))
+            except Exception as e:
+                logging.error(e)
 
     return modelos
 
@@ -230,7 +235,7 @@ def random_search(X_test, y_test, modelos, metric, lim=0.5):
 
     return best_model
 
-def best_nn(X_train, y_train, X_test, y_test, it, epcs, metric):
+def best_nn(X_train, y_train, X_test, y_test, it, epcs, metric, threshold=0.5):
     """
     Selección de mejor modelo de red neuronal
 
@@ -247,6 +252,6 @@ def best_nn(X_train, y_train, X_test, y_test, it, epcs, metric):
         bm (modelo): Mejor red seleccionada
     """
     modelos = random_nets(X_train, y_train, it=it, epcs=epcs)
-    bm = random_search(X_test, y_test, modelos, metric=metric)
+    bm = random_search(X_test, y_test, modelos, metric=metric, lim=threshold)
 
     return bm

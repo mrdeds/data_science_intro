@@ -16,7 +16,8 @@ def automl_random_search(query,
                          tpot=False,
                          it=10,
                          epcs=10,
-                         metric='auc'):
+                         metric='auc',
+                         threshold=0.5):
     """
     Crea un modelo simple, tpot y red neuronal con random
     search dada una base de datos y una variable objetivo
@@ -31,6 +32,7 @@ def automl_random_search(query,
         epcs (int): Número de epochs
         metric (str): Métrica de precisión para seleccionar mejor modelo
                       ['acc', 'prec', 'rec', 'f1', 'mcc', 'auc']
+        threshold (float): Score de corte
     Returns:
         simple_mod (modelo): Modelo simple
         best_neuralnet (modelo): Mejor modelo de red neuronal
@@ -49,7 +51,7 @@ def automl_random_search(query,
     logging.info('Transformación')
     dftransform, newvals = augment_data(dfclean,
                                         response,
-                                        treshold=0.075,
+                                        threshold=0.075,
                                         categories=False)
     logging.info('Selección de variables')
     best_vars = importance_corr(dftransform,
@@ -72,18 +74,19 @@ def automl_random_search(query,
                              y_test,
                              it=it,
                              epcs=epcs,
-                             metric=metric)
+                             metric=metric,
+                             threshold=threshold)
 
     logging.info('Evaluación de modelos:\n')
     logging.info('Modelo Simple:')
     simple_predictions = simple_mod.predict(X_test)
-    model_precision(y_test, simple_predictions, 0.5, disp=True)
+    model_precision(y_test, simple_predictions, threshold, disp=True)
     logging.info('Modelo de Red Neuronal:')
     nn_predictions = best_neuralnet.predict(X_test)
-    model_precision(y_test, nn_predictions, 0.5, disp=True)
+    model_precision(y_test, nn_predictions, threshold, disp=True)
     if tpot:
         logging.info('Modelo de TPOT:')
         tpot_predictions = tpot_mod.predict(X_test)
-        model_precision(y_test, tpot_predictions, 0.5, disp=True)
+        model_precision(y_test, tpot_predictions, threshold, disp=True)
 
-    return simple_mod, best_neuralnet, tpot_mod
+    return simple_mod, best_neuralnet, tpot_mod, best_vars
