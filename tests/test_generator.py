@@ -97,7 +97,7 @@ def test_augment_numeric():
     df, new_vars = augment_numeric(DF, response)
     print(new_vars)
     assert len(df.columns) == 8 and new_vars == ['area^2', 'area^3', 'sqrt(area)',
-                                         '1/area', 'log(area)']
+                                                  '1/area', 'log(area)']
 
 def test_augment_date():
     """
