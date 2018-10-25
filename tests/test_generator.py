@@ -3,17 +3,29 @@
 """
 Funciones que toma pytest para evaluar la librería
 """
+import os
 import logging
 import pytest
-from transform import divide_cats, nan_to_avg
+import sys
+sys.path.append('../')
+from transform.transform import drop_correlation, augment_numeric, augment_date
 import pandas as pd
 import random
 import numpy as np
 import psycopg2
 import Extract
 import pg_temp
+from datetime import datetime
+import random
 
 logging.getLogger().setLevel(logging.DEBUG)
+
+temp_db = pg_temp.TempDB(databases=['testdb'], verbosity=1)
+os.environ['HOST'] = temp_db.pg_socket_dir
+os.environ['PORT'] = '5432'
+os.environ['USER'] = ''
+os.environ['PASSWORD'] = ''
+os.environ['DB'] = 'testdb'
 
 def my_equal(df1, df2):
     """
@@ -34,54 +46,12 @@ def my_equal(df1, df2):
     except (AssertionError, ValueError, TypeError):
         return False
 
-def test_divide_cats():
-    """
-    Evalúa la función divide_cats. La cual hace la divición de variables
-    categóricas. Prueba, si tenemos un dataframe con variables categóricas,
-    la transformación a variables binarias por cada categoría
-    """
-    data = {'color' : pd.Series(['rojo', 'verde', 'azul']),
-            'sabor' : pd.Series(['frambuesa', 'limón', 'chicle']),
-            'precio': pd.Series([10.0, 12.50, 15.0])}
-    DF = pd.DataFrame(data)
-    categorias = ['color', 'sabor']
-    res = divide_cats(DF, categorias)
-    data_assert = data
-    data_assert.update({'color_azul' : pd.Series([0,0,1]),
-                        'color_verde' : pd.Series([0,1,0]),
-                        'color_rojo' : pd.Series([1,0,0]),
-                        'sabor_limón' : pd.Series([0,1,0]),
-                        'sabor_chicle' : pd.Series([0,0,1]),
-                        'sabor_frambuesa': pd.Series([1,0,0])})
-    DF_assert = pd.DataFrame(data_assert)
-
-    assert my_equal(df1, df2) == True
-
-def test_nan_to_avg():
-    """
-    Evalúa la función nan_to_avg. La cual hace la búsqueda de valores nan en un
-    DataFrame, los elimina y los rellena con el valor promedio de la columna.
-    Esta prueba es para ver si hace, con un dataframe dado, la función en todas las
-    columnas.
-    """
-    df = pd.DataFrame([[np.nan, 2, np.nan, 0],
-                       [3, 4, np.nan, 1],
-                       [np.nan, np.nan, np.nan, 5],
-                       [np.nan, 3, np.nan, 4]],
-                       columns=list('ABCD'))
-
-    df = nan_to_avg(df)
-    print(df)
-    assert  df.isnull().values.any() == False
-
 def test_db_connection():
     """
     Evalúa la función de conexión a la base de datos
     """
-    temp_db = pg_temp.TempDB(databases=['testdb'], verbosity=1)
-    conn_creds = {'host':temp_db.pg_socket_dir, 'port': 5432, 'user':'','password':'','database':'testdb'}
-    connection = Extract.db_connection(conn_creds)
-    temp_db.cleanup()
+    connection = Extract.db_connection()
+    connection.close()
     assert str(type(connection)) == "<class 'psycopg2.extensions.connection'>"
 
 def test_download_data():
@@ -89,11 +59,70 @@ def test_download_data():
     Evalúa la función extracción de datos
     """
     temp_db = pg_temp.TempDB(databases=['testdb'])
-    conn_creds = {'host':temp_db.pg_socket_dir, 'port': 5432, 'user':'','password':'','database':'testdb'}
     select_query = "SELECT * FROM pg_attribute"
 
-    conn = Extract.db_connection(conn_creds)
+    conn = Extract.db_connection()
     df = Extract.download_data(conn, select_query)
     temp_db.cleanup()
 
     assert df.size>0
+
+def test_drop_correlation():
+    """
+    Evalúa que de un dataframe obtenga correctamente la correlación de variables
+    contra alguna variable objetivo dada
+    """
+
+    data = {'area' : pd.Series([100.0, 125.0, 150.0, 130.0, 145.0, 10.0, 1000.0, 20.0]),
+            'zona_sur': pd.Series([1, 0, 0, 1, 0, 0, 1]),
+            'zona_norte': pd.Series([0, 1, 1, 0, 1, 1, 0]),
+            'precio': pd.Series([10.0, 12.50, 15.0, 13.0, 14.5, 1.0, 100.0, 2])}
+    DF = pd.DataFrame(data)
+    var_list = ['area', 'zona_sur', 'zona_norte']
+    response = 'precio'
+    df, dropped = drop_correlation(DF, var_list, response, threshold=0.01)
+
+    assert len(df.columns) == 2 and len(dropped) == 2
+
+def test_augment_numeric():
+    """
+    Evalúa que dado un dataframe se le aumenten las variables numéricas
+    checa que se añadan las variables correctas al dataframe final.
+    """
+    data = {'area' : pd.Series([100.0, 125.0, 150.0, 130.0, 145.0, 10.0, 1000.0, 20.0]),
+            'zona': pd.Series(['sur', 'norte', 'norte', 'sur', 'norte', 'sur', 'norte', 'sur']),
+            'precio': pd.Series([10.0, 12.50, 15.0, 13.0, 14.5, 1.0, 100.0, 2.0])}
+    DF = pd.DataFrame(data)
+    response = 'precio'
+    df, new_vars = augment_numeric(DF, response)
+    print(new_vars)
+    assert len(df.columns) == 8 and new_vars == ['area^2', 'area^3', 'sqrt(area)',
+                                                  '1/area', 'log(area)']
+
+def test_augment_date():
+    """
+    Evalúa que dado un dataframe se le aumenten las variables de fecha
+    """
+    dates = []
+    for i in range(8): #hacemos primero 8 fechas al azar. Año, mes, día, hora
+        dates.append(datetime(random.randint(2000, 2018), random.randint(1, 12),
+                              random.randint(1, 28), random.randint(0, 23)))
+    data = {'fecha_compra' : pd.Series(dates),
+            'area' : pd.Series([100.0, 125.0, 150.0, 130.0, 145.0, 10.0, 1000.0, 20.0]),
+            'zona' : pd.Series(['sur', 'norte', 'norte', 'sur', 'norte', 'sur', 'norte', 'sur']),
+            'precio' : pd.Series([10.0, 12.50, 15.0, 13.0, 14.5, 1.0, 100.0, 2.0])}
+    DF = pd.DataFrame(data)
+    response = 'precio'
+
+    df, new_vars = augment_date(DF, response)
+
+    meses = len(set([date.month for date in dates]))
+    dias = len(set([date.day for date in dates]))
+    horas = len(set([date.hour for date in dates]))
+    dias_semana = len(set([date.weekday() for date in dates]))
+    #las columnas que añadimos más las originales
+    total = meses + dias + horas + dias_semana + 4
+
+    check_binary = [column for column in df.columns if set(df[column].unique()) == set([0, 1])]
+
+    assert len(df.columns) == total and new_vars == check_binary
