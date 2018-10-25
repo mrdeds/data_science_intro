@@ -106,7 +106,7 @@ def test_augment_date():
     dates = []
     for i in range(8): #hacemos primero 8 fechas al azar. Año, mes, día, hora
         dates.append(datetime(random.randint(2000, 2018), random.randint(1, 12),
-                             random.randint(1, 28), random.randint(0, 23)))
+                              random.randint(1, 28), random.randint(0, 23)))
     data = {'fecha_compra' : pd.Series(dates),
             'area' : pd.Series([100.0, 125.0, 150.0, 130.0, 145.0, 10.0, 1000.0, 20.0]),
             'zona' : pd.Series(['sur', 'norte', 'norte', 'sur', 'norte', 'sur', 'norte', 'sur']),
