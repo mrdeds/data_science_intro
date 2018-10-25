@@ -7,16 +7,20 @@ import os
 import logging
 import subprocess
 import requests
-import tensorflow as tf
+import re
 from tensorflow.python.saved_model.builder import SavedModelBuilder
 from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def
 from tensorflow.python.saved_model import tag_constants
 import keras.backend as K
 from keras.models import load_model
+from google.cloud import storage
 
-
-logger = logging.getLogger('deploy_mlengine')
-logger.setLevel(logging.DEBUG)
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S %p',
+    level=logging.INFO,
+    #filename='log.txt'
+)
 
 class DeployMLEngine(object):
     """
@@ -38,16 +42,33 @@ class DeployMLEngine(object):
         self.version_name = version_name
         self.model_dest = model_dest
 
+    def upload_blob(self):
+        """Sube el archivo h5 (original) a un bucket de Google Cloud."""
+        path_bucket = self.model_dest+"/"+self.version_name
+        nom_bucket = path_bucket.split('/')[2]
+        path_file_bucket = path_bucket.split('gs://{}/'.format(nom_bucket))[1]+"/"+self.model_name + ".h5"
+
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(nom_bucket)
+        blob = bucket.blob(path_file_bucket)
+
+        blob.upload_from_filename(self.fname)
+
+        logging.info('Modelo {} guardado en {}.'.format(
+            self.model_name +'.h5',
+            self.model_dest))
+
     def to_savedmodel(self):
         """
-        Función que transforma el modelo de .h5 (Keras) a .pb(Tensorflow) y lo
-        guarda en Storage
+        Función que transforma el modelo de .h5 (Keras) a .pb(Tensorflow) y
+        guarda ambos en Storage
 
         Returns:
             - res(string): ruta donde se guarda modelo transformado
         """
         model = load_model(self.fname)
         path = self.model_dest+"/"+self.version_name
+
         try:
             builder = SavedModelBuilder(path)
             signature = predict_signature_def(
@@ -61,10 +82,17 @@ class DeployMLEngine(object):
                         'predict': signature})
                 builder.save()
             res = "Modelo guardado en formato .pb en {}".format(path)
-            logger.info(res)
+            logging.info(res)
         except AssertionError as exception:
             res = exception
-            logger.error(exception)
+            logging.error(exception)
+
+        try:
+            logging.info(f"Subiendo modelo en H5 a Storage: {path}")
+            self.upload_blob()
+        except AssertionError as exception:
+            pass
+            logging.error(f"Error al tratar de subir el modelo H5:{exception}')
 
         return res
 
@@ -82,8 +110,8 @@ class DeployMLEngine(object):
         new_model = os.system(command)
 
         if new_model > 0: #Si nos regresa un error el comando ejecutado
-            logger.warning('Un modelo con el nombre %s ya existe, se intentará\
-            añadir una nueva versión', self.model_name)
+            logging.warning('Un modelo con el nombre %s ya existe', self.model_name)
+            logging.warning('se intentará añadir una nueva versión')
 
         return new_model
 
@@ -92,8 +120,8 @@ class DeployMLEngine(object):
         Función que crea una nueva versión del modelo entrenado
 
         Returns:
-            - new_model(string): La descripción de la nueva versión del modelo desplegado en
-                                 ML Engine, junto con el endpoint creado
+            - new_model(string): La descripción de la nueva versión del modelo
+                                 desplegado en ML Engine, junto con el endpoint creado
         """
         #obtenemos el token que nos identifica en GCP
         batcmd = "gcloud auth print-access-token"
@@ -111,13 +139,13 @@ class DeployMLEngine(object):
             request = requests.post(url, json=json_curl, headers=headers_curl)
             endpoint = """https://ml.googleapis.com/v1/projects/{}/models/{}/versions/{}:predict
                 """.format(self.project_id, self.model_name, self.version_name)
-            mess = request.text + "\n" + endpoint
-            logger.info("INFO: Endpoint creado: %s", mess)
+            mess = request.text + "\nEndpoint: " + endpoint
+            logging.info("INFO: Endpoint creado: %s", mess)
 
         except requests.exceptions.RequestException as exception:
             mess = "Error: %s", request.text
-            logger.error(mess)
-            logger.error("Exception: %s", exception)
+            logging.error(mess)
+            logging.error("Exception: %s", exception)
 
         return mess
 
@@ -129,13 +157,13 @@ class DeployMLEngine(object):
             - res(string): La descripción de la nueva versión del modelo desplegado en
                                  ML Engine, junto con el endpoint creado
         """
-        logger.info("Convirtiendo modelo y guardando en Storage...")
+        logging.info("Convirtiendo modelo y guardando en Storage...")
         self.to_savedmodel()
 
-        logger.info("Creando nuevo modelo en ML Engine...")
+        logging.info("Creando nuevo modelo en ML Engine...")
         self.create_model()
 
-        logger.info("Creando nueva versión del modelo...")
+        logging.info("Creando nueva versión del modelo...")
         res = self.create_version()
 
         return res
