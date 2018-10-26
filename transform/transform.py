@@ -237,7 +237,7 @@ def augment_categories(DF, response, exclude_metadata=True):
     return df, new_vars
 
 
-def augment_data(DF, response, treshold=0.1, categories=False):
+def augment_data(DF, response, threshold=0.1, categories=False):
     """
     Prueba ciertas transformaciones numéricas, de fecha y categóricas.
     Verifica si la correlación es buena, a partir de un threshold,
@@ -245,7 +245,7 @@ def augment_data(DF, response, treshold=0.1, categories=False):
     Args:
         DF (DataFrame): DataFrame de tus datos
         response (str): Variable dependiente (la debe contener tu base)
-        treshold (float): Correlación mínima que se espera de una variable que
+        threshold (float): Correlación mínima que se espera de una variable que
                         quieres que entre al modelo
     Returns:
         df (DataFrame): DataFrame con transformaciones útiles
@@ -264,6 +264,6 @@ def augment_data(DF, response, treshold=0.1, categories=False):
         df, catego = augment_categories(df, response)
     aug_vars = numeric + fecha + catego
     df.drop(fechas, inplace=True, axis=1)
-    df, dropped = drop_correlation(df, aug_vars, response, treshold)
+    df, dropped = drop_correlation(df, aug_vars, response, threshold)
 
     return df, dropped
