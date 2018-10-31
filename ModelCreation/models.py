@@ -9,8 +9,9 @@ import numpy as np
 import logging
 from sklearn.model_selection import train_test_split
 from tpot import TPOTClassifier, TPOTRegressor
+from sklearn import preprocessing
 
-def train_test(df, response, train_size=0.75, time_series=False):
+def train_test(df, response, train_size=0.75, time_series=False, scaling=None):
     """
     Regresa train y test sets
 
@@ -19,6 +20,7 @@ def train_test(df, response, train_size=0.75, time_series=False):
         response (str): Variable respuesta
         train_size (float): % Train Size
         time_series (boolean): Si es serie de tiempo o no
+        scaling (str): ['standard', 'minmax', 'maxabs', 'robust', 'quantile']
     Returns:
         X_train (Array): conjunto de datos de entrenamiento (indep)
         X_test (Array): conjunto de datos de prueba (indep)
@@ -41,10 +43,25 @@ def train_test(df, response, train_size=0.75, time_series=False):
             X_train, X_test = X.values[train_index], X.values[test_index]
             y_train, y_test = y.values[train_index], y.values[test_index]
     else:
-        X_train, X_test, y_train, y_test = train_test_split(X,
-                                                            y,
+        X_train, X_test, y_train, y_test = train_test_split(X.values,
+                                                            y.values,
                                                             random_state=0,
                                                             train_size=train_size)
+    if scaling == 'standard':
+        scaler = preprocessing.StandardScaler()
+    if scaling == 'minmax':
+        scaler = preprocessing.MinMaxScaler()
+    if scaling == 'maxabs':
+        scaler = preprocessing.MaxAbsScaler()
+    if scaling == 'robust':
+        scaler = preprocessing.RobustScaler()
+    if scaling == 'quantile':
+        scaler = preprocessing.QuantileTransformer()
+
+    if scaling != None:
+        scaler.fit(X_train)
+        X_train = scaler.transform(X_train)
+        X_test = scaler.transform(X_test)
 
     return X_train, X_test, y_train, y_test
 
