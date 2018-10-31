@@ -38,10 +38,12 @@ def train_test(df, response, train_size=0.75, time_series=False, scaling=None):
     logging.info(response)
 
     if time_series:
-        tscv = TimeSeriesSplit(n_splits=2)
-        for train_index, test_index in tscv.split(X):
-            X_train, X_test = X.values[train_index], X.values[test_index]
-            y_train, y_test = y.values[train_index], y.values[test_index]
+        trainsize = int(train_size*len(X))
+        X_train = X[:trainsize].values
+        X_test = X[trainsize:].values
+        y_train = y[:trainsize].values
+        y_test = y[trainsize:].values
+
     else:
         X_train, X_test, y_train, y_test = train_test_split(X.values,
                                                             y.values,
