@@ -140,8 +140,8 @@ def importance_corr(df, response, corr=0.1, fif=0.01, vif=False):
             best_features = best_features[best_features['feature'] != i]
 
     best_features = best_features.reset_index(drop=True)
-    logging.info('''\nEstas son las variables que estaremos usando, si \
-    desea eliminar alguna escriba el número que aparece a la izquierda de \
+    logging.info('''\nEstas son las variables que estaremos usando, si
+    desea eliminar alguna escriba el número que aparece a la izquierda de
     las variables a eliminar, separados por comas''')
     pd.set_option('display.max_rows', len(best_features))
     display(best_features)
@@ -152,12 +152,13 @@ def importance_corr(df, response, corr=0.1, fif=0.01, vif=False):
         elim = elim.split(',')
         ranges = [i for i in elim if '-' in i]
         nonranges = [int(i) for i in elim if i not in ranges]
-        r = []
-        for x in ranges:
-            rn = list(range(int(x.split('-')[0]), int(x.split('-')[1])))
-            r.extend(rn)
-        r.append(r[-1] + 1)
-        nonranges.extend(r)
+        if ranges:
+            r = []
+            for x in ranges:
+                rn = list(range(int(x.split('-')[0]), int(x.split('-')[1])))
+                r.extend(rn)
+            r.append(r[-1] + 1)
+            nonranges.extend(r)
         best_features = best_features.drop(nonranges)
 
     return best_features
