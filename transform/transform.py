@@ -259,7 +259,7 @@ def augment_data(DF, response, threshold=0.1, categories=False):
     df, fecha = augment_date(df, response)
     #suele tardarse mucho la transformación de categorías
     numericas, categoricas, fechas = datatypes(df)
-    df = pd.get_dummies(df, columns=categoricas)
+    df = pd.get_dummies(df, columns=categoricas, dummy_na=True, drop_first=True)
     if categories:
         df, catego = augment_categories(df, response)
     aug_vars = numeric + fecha + catego

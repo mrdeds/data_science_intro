@@ -9,61 +9,14 @@ import pandas as pd
 import numpy as np
 import logging
 import matplotlib.pyplot as plt
+import sys
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.callbacks import ModelCheckpoint
 from sklearn.metrics import roc_curve
+sys.path.append('../')
+from Evaluation.metrics import model_precision
 
-def model_precision(y_test, predictions, lim, disp=False):
-    """
-    Métricas de precisión de un modelo de clasificación
-
-    Args:
-        y_test (array): Instancias de la variable dependiente
-        predictions (array): Predicciones
-        lim (float): Entre 0 y 1 que marca el límite de clasificación
-                     (arriba de lim se considera positivo)
-        disp (boolean): Imprimir matriz con métricas
-    Returns:
-        accuracy (float): (tp+tn)/(tp+tn+fp+fn)
-        precision (float): tp/(tp+fp)
-        recall (float): tp/(tp+fn)
-        f1_score (float): 2/(1/Precision+1/Recall) Media armónica
-                          entre Precision y Recall
-        mcc (float): Matthiews Correlation Coefficient
-                     (tp*tn-fp*fn)/(math.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn)))
-
-    """
-    y_test = y_test.reshape([y_test.shape[0], 1])
-    predictions = predictions.reshape([predictions.shape[0], 1])
-
-    test = np.concatenate((y_test,predictions),axis=1)
-
-    tp = ((test[:,0] == 1) & (test[:,1] >= lim)).sum()
-    fp = ((test[:,0] == 0) & (test[:,1] >= lim)).sum()
-    tn = ((test[:,0] == 0) & (test[:,1] < lim)).sum()
-    fn = ((test[:,0] == 1) & (test[:,1] < lim)).sum()
-
-    accuracy = (tp+tn)/(tp+tn+fp+fn)
-    precision = tp/(tp+fp)
-    recall = tp/(tp+fn)
-    f1_score = 2/(1/precision+1/recall)
-    mcc = (tp*tn-fp*fn)/(math.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn)))
-
-    res = pd.DataFrame(0, index=['Accuracy', 'Precision',
-                                 'Recall', 'F1 Score',
-                                 'MCC'], columns=['Score'])
-
-    res.loc['Accuracy'] = accuracy
-    res.loc['Precision'] = precision
-    res.loc['Recall'] = recall
-    res.loc['F1 Score'] = f1_score
-    res.loc['MCC'] = mcc
-
-    if disp != False:
-        display(res)
-
-    return accuracy, precision, recall, f1_score, mcc
 
 def NN(X_train, y_train, neurons, activations, initializer,
        optimizer, epochs, batch, loss, checkpoint=False):
@@ -187,7 +140,7 @@ def random_nets(X_train, y_train, it, epcs):
 
     return modelos
 
-def random_search(X_test, y_test, modelos, metric, lim=0.5):
+def random_search(X_test, y_test, modelos, metric, sc=0.5):
     """
     Random search en parámetros de una red neuronal de clasificación
 
@@ -196,7 +149,7 @@ def random_search(X_test, y_test, modelos, metric, lim=0.5):
         X_test (array): Variables independientes (muestra de prueba)
         metric (str): Métrica de precisión para seleccionar mejor modelo
                       ['acc', 'prec', 'rec', 'f1', 'mcc', 'auc']
-        lim (float): Threshold para métricas en (0,1)
+        sc (float): Threshold para métricas en (0,1)
     Returns:
         best_model (modelo): Mejor red seleccionada
 
@@ -209,7 +162,8 @@ def random_search(X_test, y_test, modelos, metric, lim=0.5):
         predictions_test = i.predict(X_test)
         acc, prec, rec, f1, mcc = model_precision(y_test,
                                                   predictions_test,
-                                                  lim)
+                                                  sc,
+                                                  disp=False)
         fpr, tpr, thresholds = roc_curve(y_test,
                                          predictions_test,
                                          pos_label=None,
@@ -248,10 +202,11 @@ def best_nn(X_train, y_train, X_test, y_test, it, epcs, metric, threshold=0.5):
         epcs (int): Número de epochs para cada mini batch en todas las redes
         metric (str): Métrica de precisión para seleccionar mejor modelo
                       ['acc', 'prec', 'rec', 'f1', 'mcc', 'auc']
+        threshold (float): threshold para métricas en (0,1)
     Returns:
         bm (modelo): Mejor red seleccionada
     """
     modelos = random_nets(X_train, y_train, it=it, epcs=epcs)
-    bm = random_search(X_test, y_test, modelos, metric=metric, lim=threshold)
+    bm = random_search(X_test, y_test, modelos, metric=metric, sc=threshold)
 
     return bm
